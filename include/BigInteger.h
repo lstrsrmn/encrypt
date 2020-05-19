@@ -39,7 +39,7 @@ BigInteger<sizeMod> redc(BigInteger<sizeMod> auxModMask, uint32 auxModExp,
 // The Extended Euclidean GCD algorithm returns the greatest common denominator between two numbers, and also
 // computes x and y such that ax + by = gcd(a, b)
 template<int sizeA, int sizeB>
-void extendedEuclidean(BigInteger<sizeA> a, BigInteger<sizeB> b, BigInteger<sizeB> &x, BigInteger<sizeA> &y);
+void extendedEuclidean(const BigInteger<sizeA> &a, const BigInteger<sizeB> &b, BigInteger<sizeB> &x, BigInteger<sizeA> &y);
 
 // UNUSED
 template<int sizeA, int sizeB>
@@ -55,6 +55,23 @@ void TEST_printHex(BigInteger<size> value) {
 
     for (int i = (size / 8) - 1; i>= 0; i--) {
         uint8 v = bytes[i];
+        char upper = hex[(v >> 4) & 0xF];
+        char lower = hex[v & 0xF];
+
+        std::cout << upper << lower;
+    }
+
+    std::cout << std::endl;
+}
+
+template<int size>
+void TEST_printHex(uint8 *value) {
+    const char *hex = "0123456789ABCDEF";
+
+    std::cout << "0x";
+
+    for (int i = size - 1; i >= 0; i--) {
+        uint8 v = value[i];
         char upper = hex[(v >> 4) & 0xF];
         char lower = hex[v & 0xF];
 
@@ -81,6 +98,10 @@ public:
     // Multiplication operator of two arbitrarily sized BigIntegers
     template<int sizeOther>
     BigInteger<MAX(size, sizeOther) * 2> operator*(BigInteger<sizeOther> other) const;
+
+    // Division operator between two arbitrarily sized BigIntegers
+    template<int sizeDivisor>
+    BigInteger<size> operator/(BigInteger<sizeDivisor> divisor) const;
 
     // Modulus operator between two arbitrarily sized BigIntegers
     template<int sizeMod>
@@ -167,16 +188,23 @@ template<int sizeMod, int sizeValue>
 BigInteger<sizeMod> redc(BigInteger<sizeMod> auxModMask, uint32 auxModExp,
                          BigInteger<sizeMod> mod, BigInteger<sizeMod> modPrime,
                          BigInteger<sizeValue> value) {
+    // Set the first intermediary variable m
     BigInteger<sizeMod> m = ((value & auxModMask) * modPrime) & auxModMask;
+    // The second intermediary variable is t = (value + (m * mod)) / r. However, an issue arises if
+    // the sum overflows, as we will essentially be subtracting more than we should. Hence, we calculate the sum
+    // manually here.
     BigInteger<sizeMod * 2> sum = (m * mod);
 
+    // Initialise the carry to false
     bool carry = false;
 
+    // Loop through the size of the value we are adding and add each uint64
     for (int i = 0; i < sizeValue / 64; i++) {
         sum.value[i] += value.value[i] + carry;
         carry = carry ? (sum.value[i] <= value.value[i]) : (sum.value[i] < value.value[i]);
     }
 
+    // If we had a carry, cascade it up to the end
     for (int i = sizeValue / 64; i < sizeMod / 32; i++) {
         if (!carry) {
             break;
@@ -185,142 +213,155 @@ BigInteger<sizeMod> redc(BigInteger<sizeMod> auxModMask, uint32 auxModExp,
         carry = sum.value[i] == 0;
     }
 
+    // The t value is sum divided by r. As we chose r to be a power of two, this is equivalent to a bit shift
     BigInteger<sizeMod> t = sum >> auxModExp;
 
+    // If we are greater than the modulus, subtract the modulus. Additionally, if we carried, then we were greater
+    // than the modulus, but won't catch it, so subtract if either is true
     if (t >= mod || carry) {
         return t - mod;
     }
+    // Otherwise we are within range so just return t
     return t;
 }
 
 template<int sizeA, int sizeB>
-void extendedEuclidean(BigInteger<sizeA> a, BigInteger<sizeB> b, BigInteger<sizeB> &x, BigInteger<sizeA> &y) {
+void extendedEuclidean(const BigInteger<sizeA> &a, const BigInteger<sizeB> &b, BigInteger<sizeB> &x, BigInteger<sizeA> &y) {
+    // Initialise variables used for the calculations. Note, we also copy a and b here to normalise the sizes of
+    // each variable
     BigInteger<MAX(sizeA, sizeB)> quotient, remainder, _a = a, _b = b;
     BigInteger<MAX(sizeA, sizeB)> x0 = 1, x1, y0, y1 = 1;
-//    BigInteger<sizeB> y0, y1 = 1;
 
-int counter = 0;
-
+    // This is an iterative version of the algorithm, but the length is unknown so we just loop until it is complete
     while (true) {
+        // Calculate the quotient and remainder of a and b
         _a.modAndDivide(_b, quotient, remainder);
+        // Update a to be the remainder as we know gcd(a, b) = gcd(b, a % b)
         _a = remainder;
+        // Update our current values for the inverses x and y (i.e. such that a * x + b * y = gcd(a, b))
         x0 = x0 - (y0 * quotient);
         x1 = x1 - (y1 * quotient);
 
+        // If a is 0, we can now return. The correct x and y values will be stored in y0 and y1 at this point.
         if (_a == BigInteger<sizeA>()) {
             x = y0;
             y = y1;
             return;
         }
 
+        // Repeat the same process, but now with essentially gcd(b, a % b) (as we set a = a % b previously)
         _b.modAndDivide(_a, quotient, remainder);
         _b = remainder;
         y0 = y0 - (x0 * quotient);
         y1 = y1 - (x1 * quotient);
 
+        // Now that we have essentially swapped the variables, we must instead check if b is 0
         if (_b == BigInteger<sizeB>()) {
             x = x0;
             y = x1;
             return;
         }
-        counter++;
     }
 }
 
 template<int size>
-uint32 *multiply(uint32 *a, uint32 *b) {
-    std::cerr << "NOT IMPLEMENTED" << std::endl;
-    exit(1);
-
+void multiply(uint32 *a, uint32 *b, uint32 *r) {
+    // Base case where we simply use in-built multiplication
     if (size == 1) {
-        uint32 *r = new uint32[2];
-
+        // Calculate the product of these two elements (we know each is < 2^32, so p fits within 64 bits)
         uint64 p = (uint64)a[0] * (uint64)b[0];
+        // Set the values in place
         r[0] = ((uint32 *) &p)[0];
         r[1] = ((uint32 *) &p)[1];
-        return r;
-    } else if (size == 2) {
-        uint64 *r = new uint64[2];
-
-        uint64 pl = (uint64)a[0] * (uint64)b[0];
-        uint64 ph = (uint64)a[1] * (uint64)b[1];
-
-        bool sign = false;
-        uint32 da32 = a[0] - a[1];
-        uint32 db32 = b[1] - b[0];
-
-        uint64 da64, db64;
-
-        if (da32 >> 31) {
-            sign = !sign;
-            da64 = -da32;
-        } else {
-            da64 = da32;
-        }
-
-        if (db32 >> 31) {
-            sign = !sign;
-            db64 = -db32;
-        } else {
-            db64 = db32;
-        }
-
-        uint64 pc = pl + ph + (sign ? -(da64 * db64) : (da64 * db64));
-
-        uint32 *l = (uint32 *) &pl;
-        uint32 *h = (uint32 *) &ph;
-        uint32 *c = (uint32 *) &pc;
-
-        r[0] = pl + (pc << 32);
-        r[1] = ph + (pc >> 32) + (r[0] < pl);
-
-        return (uint32 *)r;
+        // Break out
+        return;
     }
 
-    uint32 *r = new uint32[size * 2];
+    // We know that the lower halves of each number are < 2^(size/2), so the product is < 2^size. Similarly,
+    // we know that the upper halves are both >= 2^(size / 2), so the product is >= 2^size, and hence these
+    // products do not interfere with each other and can simply be calculated in place.
 
-    uint32 *aLowHigh = new uint32[size / 2 + 1];
-    uint32 *bLowHigh = new uint32[size / 2 + 1];
+    // Multiply the lower halves in place
+    multiply<size / 2>(a, b, r);
+    // Multiply the upper halves in place
+    multiply<size / 2>(&a[size / 2], &b[size / 2], &r[size]);
 
-    bool carryA = true, carryB = true;
+    // The cross multiplication section, however, overlaps both of the other sections so can't be set directly.
+    // To calculate this, we simply make a new temporary array to store the intermediary value and then add it on.
+
+    // We need the two sums of the upper and lower halves of a and b, namely a0 + a1 and b1 + b0.
+    uint32 *sa = (uint32 *) alloca(sizeof(uint32) * size / 2);
+    uint32 *sb = (uint32 *) alloca(sizeof(uint32) * size / 2);
+
+    // Copy the lower half of a into sa
+    memcpy(sa, a, sizeof(uint32) * size / 2);
+    // Copy the lower half of b into sb
+    memcpy(sb, b, sizeof(uint32) * size / 2);
+
+    bool carryA = false, carryB = false;
+
     for (int i = 0; i < size / 2; i++) {
-        aLowHigh[i] = a[i] + (~a[i + size / 2]) + carryA;
-        bLowHigh[i] = b[i] + (~b[i + size / 2]) + carryB;
+        uint32 _a = a[i + size / 2] + carryA, _b = b[i + size / 2] + carryB;
 
-        carryA = carryA ? (aLowHigh[i] <= a[i]) : (aLowHigh[i] < a[i]);
-        carryB = carryB ? (bLowHigh[i] <= b[i]) : (bLowHigh[i] < b[i]);
+        sa[i] += _a;
+        sb[i] += _b;
+
+        carryA = sa[i] < _a;
+        carryB = sb[i] < _b;
     }
 
-    uint32 *low = multiply<size / 2>(a, b);
-    uint32 *high = multiply<size / 2>(&a[size / 2], &b[size / 2]);
-    uint32 *cross = multiply<size / 2>(aLowHigh, bLowHigh);
+    uint32 *cross = (uint32 *) alloca(sizeof(uint32) * size);
+    memset(cross, 0, sizeof(uint32) * size);
+    multiply<size / 2>(sa, sb, cross);
 
-    memcpy(low, r, sizeof(uint32) * size);
+    if (carryA) {
+        carryA = false;
 
-    bool carry = false;
-    for (int i = 0; i < size / 2; i++) {
-        r[i + size / 2] += cross[i] + carry;
-
-        carry = carry ? (r[i + size / 2] <= cross[i]) : (r[i + size / 2] < cross[i]);
+        for (int i = size / 2; i < size; i++) {
+            uint32 _b = sb[i - size / 2] + carryA;
+            cross[i] += _b;
+            carryA = cross[i] < _b;
+        }
     }
 
-    for (int i = 0; i < size / 2 + 2; i++) {
-        r[i + size] = cross[i + size / 2] + high[i] + carry;
+    if (carryB) {
+        carryB = false;
 
-        carry = carry ? (r[i + size] <= high[i]) : (r[i + size] < high[i]);
+        for (int i = size / 2; i < size; i++) {
+            uint32 _a = sa[i - size / 2] + carryB;
+            cross[i] += _a;
+            carryB = cross[i] < _a;
+        }
     }
 
-    for (int i = size / 2 + 2; i < size; i++) {
-        r[i + size] = high[i] + carry;
+    bool carry = true;
 
-        carry = carry && (r[i + size] < high[i]);
+    for (int i = 0; i < size; i++) {
+        uint32 _add = ~r[i] + carry;
+        cross[i] += _add;
+        carry = cross[i] < _add;
     }
 
-    free(low);
-    free(high);
-    free(cross);
+    carry = true;
 
-    return r;
+    for (int i = 0; i < size; i++) {
+        uint32 _add = ~r[i + size] + carry;
+        cross[i] += _add;
+        carry = cross[i] < _add;
+    }
+
+    carry = false;
+
+    for (int i = 0; i < size; i++) {
+        uint32 _add = cross[i] + carry;
+        r[i + size / 2] += _add;
+        carry = r[i + size / 2] < _add;
+    }
+
+    for (int i = 3 * size / 2; (i < 2 * size) && carry; i++) {
+        r[i]++;
+        carry = r[i] == 0;
+    }
 }
 
 template<int size>
@@ -404,20 +445,15 @@ BigInteger<MAX(size, sizeOther)> BigInteger<size>::operator-(BigInteger<sizeOthe
 template<int size>
 template<int sizeOther>
 BigInteger<MAX(size, sizeOther) * 2> BigInteger<size>::operator*(BigInteger<sizeOther> other) const {
-//    uint32 *a = new uint32[MAX(size, sizeOther) * 2];
-//    uint32 *b = new uint32[MAX(size, sizeOther) * 2];
+
+    // TODO: Fix Karatsuba implementation
+//    BigInteger<MAX(size, sizeOther) * 2> _r;
 //
-//    memcpy(a, value, sizeof(uint32) * size * 2);
-//    memcpy(b, other.value, sizeof(uint32) * sizeOther * 2);
+//    if (size == sizeOther) {
+//        multiply<size / 32>((uint32 *) value, (uint32 *) other.value, (uint32 *) _r.value);
 //
-//    BigInteger<MAX(size, sizeOther) * 2> result;
-//
-//    memcpy(result.value, multiply<MAX(size, sizeOther) / 32>(a, b), sizeof(uint32) * MAX(size, sizeOther) * 2);
-//
-//    free(a);
-//    free(b);
-//
-//    return result;
+//        return _r;
+//    }
 
     // First, view the data as an array of uint32's rather than uint64's. This is so we can use standard
     // multiplication of uint64's without overflowing
@@ -466,13 +502,30 @@ BigInteger<MAX(size, sizeOther) * 2> BigInteger<size>::operator*(BigInteger<size
 }
 
 template<int size>
+template<int sizeDivisor>
+BigInteger<size> BigInteger<size>::operator/(BigInteger<sizeDivisor> divisor) const {
+    // Initialise variables for the quotient and remainder
+    BigInteger<size> quotient;
+    BigInteger<sizeDivisor> remainder;
+
+    // Call the mod and divide function to calculate both
+    modAndDivide(divisor, quotient, remainder);
+
+    // Return just the quotient
+    return quotient;
+}
+
+template<int size>
 template<int sizeMod>
 BigInteger<sizeMod> BigInteger<size>::operator%(BigInteger<sizeMod> mod) const {
+    // Initialise variables for the quotient and remainder
     BigInteger<size> quotient;
     BigInteger<sizeMod> remainder;
 
+    // Call the mod and divide function to calculate both
     modAndDivide(mod, quotient, remainder);
 
+    // Return just the remainder
     return remainder;
 }
 
@@ -533,9 +586,12 @@ void BigInteger<size>::modAndDivide(BigInteger<sizeDivisor> divisor, BigInteger<
     uint32 *q = (uint32 *) quotient.value;
     uint32 *r = (uint32 *) remainder.value;
 
+    // Set the quotient and remainder to all 0s by default (this was causing errors when reusing values)
     memset(q, 0, size / 8);
     memset(r, 0, sizeDivisor / 8);
 
+    // In the case when n is 1 (the divisor has only one digit) run a slightly modified version of the algorithm
+    // The original algorithm only works in the case that n >= 2
     if (n == 1) {
         long long k = 0;
         for (int j = m - 1; j >= 0; j--) {
@@ -546,6 +602,8 @@ void BigInteger<size>::modAndDivide(BigInteger<sizeDivisor> divisor, BigInteger<
         return;
     }
 
+    // We know this should be true because m < n => dividend < divisor, and so we would have returned the trivial
+    // case above
     assert(m >= n);
 
     // We allocate a separate array of uint32's for the normalised versions of u and v. Note that un has an extra
@@ -572,20 +630,11 @@ void BigInteger<size>::modAndDivide(BigInteger<sizeDivisor> divisor, BigInteger<
     vn[0] = v[0] << s;
 
     for (int j = m - n; j >= 0; j--) {
+        // Calculate the estimates for the quotient and remainder at this pass
         uint64 qPrime = (un[n + j] * b + un[n + j - 1]) / vn[n - 1];
         uint64 rPrime = (un[n + j] * b + un[n + j - 1]) % vn[n - 1];
 
-//        while (true) {
-//            if (qPrime >= b || qPrime * (uint64) vn[n - 1] > b * rPrime + un[j + n - 2]) {
-//                qPrime -= 1;
-//                rPrime += vn[n - 1];
-//                if (rPrime < b) {
-//                    continue;
-//                }
-//            }
-//            break;
-//        }
-
+        // Adjust them
         while (qPrime >= b || (uint32) qPrime * (uint64) vn[n - 2] > b * rPrime + un[j + n - 2]) {
             qPrime -= 1;
             rPrime += vn[n - 1];
@@ -621,6 +670,7 @@ void BigInteger<size>::modAndDivide(BigInteger<sizeDivisor> divisor, BigInteger<
         }
     }
 
+    // Un-normalise the remainder
     for (int i = 0; i < n - 1; i++) {
         r[i] = (un[i] >> s) | ((uint64) un[i + 1] << (32 - s));
     }
@@ -698,6 +748,11 @@ void BigInteger<size>::operator<<=(uint32 shift) {
         // Update the carry to the new one
         carry = carryNew;
     }
+
+    // Set the full unit64's that we skipped over to 0
+    for (int i = 0; i < fullShifts; i++) {
+        value[i] = 0;
+    }
 }
 
 template<int size>
@@ -719,6 +774,11 @@ void BigInteger<size>::operator>>=(uint32 shift) {
         value[i] = (value[i + fullShifts] >> rem) + (rem ? carry : 0);
         // Update the carry to the new one
         carry = carryNew;
+    }
+
+    // Set the full unit64's that we skipped over to 0
+    for (int i = (size / 64) - fullShifts; i < (size / 64); i++) {
+        value[i] = 0;
     }
 }
 
@@ -888,6 +948,10 @@ bool BigInteger<size>::operator<=(BigInteger<sizeOther> other) const {
 template<int size>
 template<int sizeExponent, int sizeMod>
 BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> exp, BigInteger<sizeMod> mod) const {
+    // Assert that the modulus value is odd. This is so the auxiliary modulus as a power of 2 works.
+    // TODO: Deal with the case where 2 | mod
+    assert(mod.value[0] & 1);
+
     // First, we need to create an auxiliary modulus r, such that gcd(mod, r)=1 and r > mod. We will choose
     // r to be the smallest power of two greater than mod, as we are assuming that mod is an odd prime.
     // As r is simply a power of 2, we will first just find the exponent.
@@ -901,13 +965,17 @@ BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> e
             // Loop through each bit of this uint64 in reverse order. The worst case performance of this is
             // quite slow, however the chances are that the most significant one will be high up the uint64
             // as n will generally be random
-            for (int j = 63; j >= 0; j--) {
-                // If this bit is 1, set r (or its exponent) to be the next most significant bit
-                if ((mod.value[i] >> j) & 1u) {
-                    rExp = i * 64 + j + 1;
-                    break;
-                }
-            }
+//            for (int j = 63; j >= 0; j--) {
+//                // If this bit is 1, set r (or its exponent) to be the next most significant bit
+//                if ((mod.value[i] >> j) & 1u) {
+//                    rExp = i * 64 + j + 1;
+//                    break;
+//                }
+//            }
+            // Get the number of leading zeros in this uint64. This builtin function should be optimised by gcc
+            uint8 leadingZeros = __builtin_clzl(mod.value[i]);
+            // Calculate the exponent as the index of the most signficant 1. This will mean that r/2 < mod < r
+            rExp = (i + 1) * 64 - leadingZeros;
             break;
         }
     }
@@ -930,7 +998,7 @@ BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> e
     // If we have a remainder to write, set the most significant uint64 to -1 shifted by 64 - the number of bits we need
     // which will leave the correct number of bits as 1, whilst setting all the others to 0.
     if (maskRemainder != 0) {
-        rMask.value[fullMasks] = (-1) >> (64 - maskRemainder);
+        rMask.value[fullMasks] = (-1UL) >> (64 - maskRemainder);
     }
 
     // Next, we need to find the base's Montgomery form representative. This is defined as b' = rb (mod n).
@@ -944,15 +1012,29 @@ BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> e
     // First, we set rb = value. This casts it into a larger size.
     BigInteger<MAX(size, sizeMod) * 2> rBase = *this;
     // Next we multiply by r, which is equivalent to left shifting by rExp
-    rBase <<= rExp;
+    // <<= UNSTABLE
+//    rBase <<= rExp;
+    rBase = rBase << rExp;
 
-    // Finally to get the Montgomery form, we just take this under the modulus.
+    // Finally to get the Montgomery form, we just take this under the modulus. This has to be done using the standard
+    // (slow) modulus function, but we only have to do this once per exponentiation
+    // TODO: Maybe cache the Montgomery base?
     BigInteger<sizeMod> montgomeryBase = rBase % mod;
 
     // Next we need the the value modPrime such that r*r^-1 - mod * modPrime = 1. To do this, we use
-    // the extended Euclidean algorithm.
-    BigInteger<sizeMod> modPrime, rPrime;
-    extendedEuclidean(mod, mod & rMask, modPrime, rPrime);
+    // the extended Euclidean algorithm. To avoid calculating r (as it might be an annoying size, i.e. a power
+    // of a power of two, meaning it requires 2 * sizeMod space) we instead notice that we can calculate n' a
+    // different way.
+    // We know rr' + nn' = 1, as gcd(r, n) = 1.
+    // Next, we let m~ be such that mm~ = 1 (mod (r - m)) <- r - n is in the range of a BigInteger<sizeMod>.
+    // Then we see that mm~ = 1 + k(r - m), and it follows that -kr + m(-k - m~) = 1. Let l = -k, lr + m(l - m~) = 1
+    // Now we see that l - m~ is just m', and we calculate m~ and l using the extended Euclidean function with m
+    // and r - n.
+    BigInteger<sizeMod> modPrime, l, rSubMod = ~mod & rMask;
+    rSubMod.value[0] |= 1;
+    extendedEuclidean(mod, rSubMod, modPrime, l);
+
+    modPrime = l - modPrime;
 
     // To actually perform the exponentiation, we use a combination of squaring and multiplying the current result
     // and take the value under the modulus at each stage. Using this approach, we can compute the result of the
@@ -964,15 +1046,36 @@ BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> e
 
     // The start value of the result. We initialise it to 1 so when we multiply things with it we don't just lose
     // the values by multiplying by 0
-    BigInteger<sizeMod> result = 1;
+    BigInteger<sizeMod> result = rSubMod;
+
+//    std::cout << "PRECONDITION" << std::endl;
+//    std::cout << "A: ";
+//    TEST_printHex(*this);
+//    std::cout << "B: ";
+//    TEST_printHex(exp);
+//    std::cout << "M: ";
+//    TEST_printHex(mod);
+//    std::cout << "M': ";
+//    TEST_printHex(modPrime);
+//    std::cout << "REXP: " << rExp << std::endl;
+//    std::cout << "RMASK: ";
+//    TEST_printHex(rMask);
+//
+//    std::cout << "RBASE: ";
+//    TEST_printHex(rBase);
+//    std::cout << "A Montgomery: ";
+//    TEST_printHex(montgomeryBase);
+//
+//    std::cout << "Result (start): ";
+//    TEST_printHex(result);
 
     // First, we loop through each bit in the modulus in reverse order
     for (int i = (sizeMod / 64) - 1; i >= 0; i--) {
         // If the whole uint64 is 0 and we haven't found the first 1 yet, we can just skip it.
-        if (mod.value[i] || startBitFound) {
+        if (exp.value[i] || startBitFound) {
             for (int j = 63; j >= 0; j--) {
                 // checkBit is set to whatever the value in this bit is
-                bool checkBit = (mod.value[i] >> j) & 1u;
+                bool checkBit = (exp.value[i] >> j) & 1u;
                 // If the start bit was already found, or if this bit was 1, then we know the start bit has been found
                 startBitFound |= checkBit;
 
@@ -984,7 +1087,7 @@ BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> e
 
                     // If the bit was set, additionally multiply the result by the base
                     if (checkBit) {
-                        result = redc(rMask, rExp, mod, modPrime, result * *this);
+                        result = redc(rMask, rExp, mod, modPrime, result * montgomeryBase);
                     }
                 }
             }
@@ -1002,22 +1105,20 @@ BigInteger<size>::BigInteger() = default;
 template<int size>
 BigInteger<size>::BigInteger(const uint64 &val) {
     // This value can fit entirely in the least significant uint64, so we just copy it there
+    // As we are constructing here, we know that the values are all 0 because that is the default
     value[0] = val;
 }
 
 template<int size>
 template<int sizeNew>
 BigInteger<size>::operator BigInteger<sizeNew>() {
+    // If we cast to a new size, just return the constructor for the new size with this as an input
     return BigInteger<sizeNew>(*this);
 }
 
 template<int size>
 template<int sizeOther>
 BigInteger<size>::BigInteger(const BigInteger<sizeOther> &val) {
-    // We assert that we aren't trying to copy a BigInteger from a larger size into a smaller one, as this would
-    // result in loss of information
-    // static_assert(size >= sizeOther, "Cannot cast a larger integer without loss of information");
-
     // We copy each uint64 from the input value into our values
     for (int i = 0; i < (MIN(size, sizeOther) / 64); i++) {
         value[i] = val.value[i];

@@ -180,6 +180,9 @@ TEST(BigIntegerArithmeticTests, Multiplication128Bit) {
     b1Raw[0] = 0x0ad54c01c92758a9, b1Raw[1] = 0x40c8f0c185dbe88f;
     r1Raw[0] = 0x5b35eda2b69fd1b9, r1Raw[1] = 0x45412dfa876804ba, r1Raw[2] = 0x1154016090f08c0d, r1Raw[3] = 0x1cd2ba271899d000;
 
+//    TEST_printHex(a0);
+//    TEST_printHex(b0);
+
     // ACT
     uint256 c0 = a0 * b0;
     uint256 c1 = a1 * b1;
