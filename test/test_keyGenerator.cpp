@@ -211,16 +211,16 @@ TEST(KeyGeneratorAlgorithmTests, MillerRabinTestPrime1024Bit) {
 
     bool c0, c1, c2, c3, c4, c5, c6, c7;
 
-    for (int i = 0; i < 16; i++) {
-        c0 = testPrime(a0, 8);
-        c1 = testPrime(a1, 8);
-        c2 = testPrime(a2, 8);
-        c3 = testPrime(a3, 8);
-        c4 = testPrime(a4, 8);
-        c5 = testPrime(a5, 8);
-        c6 = testPrime(a6, 8);
-        c7 = testPrime(a7, 8);
-    }
+//    for (int i = 0; i < 16; i++) {
+    c0 = testPrime(a0, 8);
+    c1 = testPrime(a1, 8);
+    c2 = testPrime(a2, 8);
+    c3 = testPrime(a3, 8);
+    c4 = testPrime(a4, 8);
+    c5 = testPrime(a5, 8);
+    c6 = testPrime(a6, 8);
+    c7 = testPrime(a7, 8);
+//    }
 
     // ASSERT
     ASSERT_EQ(c0, r0);
@@ -231,4 +231,31 @@ TEST(KeyGeneratorAlgorithmTests, MillerRabinTestPrime1024Bit) {
     ASSERT_EQ(c5, r5);
     ASSERT_EQ(c6, r6);
     ASSERT_EQ(c7, r7);
+}
+
+TEST(KeyGeneratorAlgorithmTests, KeyPairEncryptionAndDecryptionTest) {
+    // ARRANGE
+    KeyPair kp = generateKeyPair();
+    char messageText[] = "Hello, World!";
+
+    uint2048 message;
+    memcpy(&message, messageText, sizeof(messageText));
+
+    // ACT
+    uint2048 cipher = kp.publicKey.encrypt(message);
+
+    char buff[257];
+    memcpy(buff, &cipher, 256);
+    buff[256] = 0;
+
+    std::cout << buff << std::endl;
+
+    uint2048 decrypted = kp.privateKey.decrypt(cipher);
+
+    char buff2[257];
+    memcpy(buff2, &decrypted, 256);
+    buff2[256] = 0;
+
+    // ASSERT
+    ASSERT_EQ(buff2, "Hello, World!");
 }

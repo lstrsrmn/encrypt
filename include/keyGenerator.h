@@ -10,6 +10,10 @@
 #include "BigInteger.h"
 #include "safeRandom.h"
 
+struct PublicKey;
+struct PrivateKey;
+struct KeyPair;
+
 // Generate a prime BigInteger with the given size
 template<int size>
 BigInteger<size> generatePrime();
@@ -18,18 +22,76 @@ BigInteger<size> generatePrime();
 template<int size>
 bool testPrime(BigInteger<size> p, int security);
 
+// Miller-Rabin test to test a number with a single witness
 template<int size>
-bool millerRabin(BigInteger<size> p, BigInteger<size> d, uint32 r, BigInteger<size> pSub1, BigInteger<size> inv, uint32 rExp, BigInteger<size> rMask);
+bool
+millerRabin(BigInteger<size> p, BigInteger<size> d, uint32 r, BigInteger<size> pSub1, BigInteger<size> inv, uint32 rExp,
+            BigInteger<size> rMask);
 
+// Generate a Public-Private key pair
+KeyPair generateKeyPair();
+
+// 2048 Bit Public Key
+struct PublicKey {
+    uint2048 n;
+    uint32 e;
+
+    PublicKey() = default;
+
+    PublicKey(uint2048 n, uint32 e);
+
+    uint2048 encrypt(uint2048 message);
+};
+
+PublicKey::PublicKey(uint2048 n, uint32 e) {
+    this->n = n;
+    this->e = e;
+}
+
+uint2048 PublicKey::encrypt(uint2048 message) {
+    return message.exp(e, n);
+}
+
+struct PrivateKey {
+    uint2048 n;
+    uint2048 d;
+
+    PrivateKey() = default;
+
+    PrivateKey(uint2048 n, uint2048 d);
+
+    uint2048 decrypt(uint2048 cipher);
+};
+
+PrivateKey::PrivateKey(uint2048 n, uint2048 d) {
+    this->n = n;
+    this->d = d;
+}
+
+uint2048 PrivateKey::decrypt(uint2048 cipher) {
+    return cipher.exp(d, n);
+}
+
+
+struct KeyPair {
+    PublicKey publicKey;
+    PrivateKey privateKey;
+};
 
 template<int size>
 BigInteger<size> generatePrime() {
+    // Initialise the prime
     BigInteger<size> prime;
+    // Get a pointer to the data stored in the prime
     uint8 *_pBuff = (uint8 *) &prime;
+    // Generate a random number and set the least significant bit to 1 (if it is even it is definitely not prime
+    // so there is no point in check it)
     CryptoSafeRandom::random(_pBuff, size / 8);
     _pBuff[0] |= 1;
 
-    while (!testPrime(prime, 6)) {
+    // Keep testing until the number is prime
+    while (!testPrime(prime, 8)) {
+        // If the number was composite, make a new one
         CryptoSafeRandom::random(_pBuff, size / 8);
         _pBuff[0] |= 1;
     }
@@ -82,31 +144,78 @@ bool testPrime(BigInteger<size> p, int security) {
 }
 
 template<int size>
-bool millerRabin(BigInteger<size> p, BigInteger<size> d, uint32 r, BigInteger<size> pSub1, BigInteger<size> inv, uint32 rExp, BigInteger<size> rMask) {
+bool
+millerRabin(BigInteger<size> p, BigInteger<size> d, uint32 r, BigInteger<size> pSub1, BigInteger<size> inv, uint32 rExp,
+            BigInteger<size> rMask) {
+    // Generate a random witness number
     BigInteger<size> a;
     CryptoSafeRandom::random(&a, size / 8);
 
+    // Convert the witness to Montgomery form
     BigInteger<size * 2> rBase = a;
     rBase = rBase << rExp;
     BigInteger<size> montgomeryBase = rBase % p;
 
+    // Calculate a^d mod p
     BigInteger<size> power = modularExponent(montgomeryBase, d, p, inv, rExp, rMask);
 
+    // By Fermat's Little Theorem, we know that if p is prime, a^(p-1) = 1 (mod p) for all a (except 0)
+    // As we know that p-1 = d * 2^r, if p is prime, then each time we take the square root, we either get
+    // 1 or negative 1. This process will end when one of the roots is -1, as the square root of this is not
+    // 1 or -1. Therefore, if we keep taking roots till we can't any more, and we still end up with 1 or -1,
+    // the number is probably prime (or more precisely, we have no evidence it is composite)
     if (power == 1 || power == pSub1) {
         return true;
     }
 
+    // Next we check every following square of the first power.
     for (int j = 0; j < r; j++) {
         power = (power * power) % p;
 
+        // If one of these comes to 1 and we haven't broken, this means we squared a value which came to 1 without
+        // it having been 1 or -1 previously which means that the number is certainly composite, so here we return
+        // false which in the prime check will return composite immediately
         if (power == 1) {
             return false;
         }
+        // If the square came to -1, however, we know that the next square will be 1 then 1 again etc all the way
+        // up to a^(p - 1), so the number is probably prime
         if (power == pSub1) {
             return true;
         }
     }
+
+    // If we got to a^(p - 1) without finding any 1s or -1s, the number is definitely composite
     return false;
+}
+
+KeyPair generateKeyPair() {
+    const uint128 one = 1;
+
+    KeyPair keyPair;
+    // Generate two large random primes
+    uint1024 p = generatePrime<1024>();
+    uint1024 q = generatePrime<1024>();
+
+    uint2048 n = p * q;
+    uint2048 psi = (p - one) * (q - one);
+
+    BigInteger<64> eBI = 65537, unused;
+    uint2048 d;
+
+    extendedEuclidean(eBI, psi, d, unused);
+
+    uint32 e = eBI.value[0];
+
+    keyPair.privateKey = {n, d};
+    keyPair.publicKey = {n, e};
+
+    // Overwrite the memory of the large primes to destroy them
+    memset(&p, 0, 128);
+    memset(&q, 0, 128);
+    memset(&psi, 0, 256);
+
+    return keyPair;
 }
 
 #endif //ENCRYPT_KEYGENERATOR_H

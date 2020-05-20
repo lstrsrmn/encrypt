@@ -55,6 +55,15 @@ BigInteger<sizeMod> modularExponent(
         uint32 rExp,
         const BigInteger<sizeMod> rMask);
 
+template<int sizeBase, int sizeMod>
+BigInteger<sizeMod> modularExponent(
+        const BigInteger<sizeBase> montgomeryBase,
+        const uint64 exp,
+        const BigInteger<sizeMod> mod,
+        const BigInteger<sizeBase> inv,
+        uint32 rExp,
+        const BigInteger<sizeMod> rMask);
+
 template<int size>
 BigInteger<size> getAuxiliaryModulusMask(uint32 modExponent);
 
@@ -183,6 +192,9 @@ public:
     template<int sizeExponent, int sizeMod>
     BigInteger<sizeMod> exp(BigInteger<sizeExponent> exp, BigInteger<sizeMod> mod) const;
 
+    template<int sizeMod>
+    BigInteger<sizeMod> exp(uint64 exp, BigInteger<sizeMod> mod) const;
+
     // Count the number of leading zeros of the number
     uint32 countLeadingZeros() const;
 
@@ -199,7 +211,6 @@ public:
     template<int sizeOther>
     BigInteger(const BigInteger<sizeOther> &val);
 
-public:
     // Create an array to store the number in memory. The size parameter
     // is given in bits, so the actual value is the size divided by 64.
     // This is defaulted to 0.
@@ -401,7 +412,8 @@ BigInteger<sizeMod> modularExponent(
 
     // The start value of the result. We initialise it to be such that it is congruent to r to begin with, so
     BigInteger<sizeMod> result = ~mod & rMask;
-    result.value[0] |= 1;
+    uint8 *resultRaw = (uint8 *) &result;
+    resultRaw[0] |= 1;
 
     // First, we loop through each bit in the modulus in reverse order
     for (int i = (sizeMod / 64) - 1; i >= 0; i--) {
@@ -433,11 +445,54 @@ BigInteger<sizeMod> modularExponent(
     return redc(rMask, rExp, mod, inv, result);
 }
 
+template<int sizeBase, int sizeMod>
+BigInteger<sizeMod> modularExponent(
+        const BigInteger<sizeBase> montgomeryBase,
+        const uint64 exp,
+        const BigInteger<sizeMod> mod,
+        const BigInteger<sizeBase> inv,
+        uint32 rExp,
+        const BigInteger<sizeMod> rMask) {
+    // A flag to determine whether or not we have found the most significant 1 yet. This improves the efficiency
+    // of the algorithm
+    bool startBitFound = false;
+
+    // The start value of the result. We initialise it to be such that it is congruent to r to begin with, so
+    BigInteger<sizeMod> result = ~mod & rMask;
+    uint8 *resultRaw = (uint8 *) &result;
+    resultRaw[0] |= 1;
+
+    for (int j = 63; j >= 0; j--) {
+        // checkBit is set to whatever the value in this bit is
+        bool checkBit = (exp >> j) & 1u;
+        // If the start bit was already found, or if this bit was 1, then we know the start bit has been found
+        startBitFound |= checkBit;
+
+        // (For efficiency) if we have the most significant bit, we need to perform the squaring and if
+        // necessary multiplying.
+        if (startBitFound) {
+            // Square the result
+            result = redc(rMask, rExp, mod, inv, result * result);
+
+            // If the bit was set, additionally multiply the result by the base
+            if (checkBit) {
+                result = redc(rMask, rExp, mod, inv, result * montgomeryBase);
+            }
+        }
+    }
+
+    // Finally apply the redc algorithm one more time to the value. This has the effect of multiplying again by
+    // the multiplicative inverse of r, so we end up with the true value (not in Montgomery form)
+    return redc(rMask, rExp, mod, inv, result);
+}
+
 template<int size>
 BigInteger<size> getAuxiliaryModulusMask(uint32 modExponent) {
     // Now we can construct a mask for taking the modulus under r, which is equal to just taking the last (rExp - 1)
     // bits of a number.
     BigInteger<size> rMask;
+
+    uint64 *raw = (uint64 *) &rMask;
 
     // Get the number of uint64s which are all 1s
     uint32 fullMasks = modExponent / 64;
@@ -447,13 +502,13 @@ BigInteger<size> getAuxiliaryModulusMask(uint32 modExponent) {
     // Loop through each low uint64
     for (int i = 0; i < fullMasks; i++) {
         // Set the value at each uint64 lower than rExp to all 1s
-        rMask.value[i] = -1UL;
+        raw[i] = -1UL;
     }
 
     // If we have a remainder to write, set the most significant uint64 to -1 shifted by 64 - the number of bits we need
     // which will leave the correct number of bits as 1, whilst setting all the others to 0.
     if (maskRemainder != 0) {
-        rMask.value[fullMasks] = (-1UL) >> (64 - maskRemainder);
+        raw[fullMasks] = (-1UL) >> (64 - maskRemainder);
     }
 
     return rMask;
@@ -462,7 +517,8 @@ BigInteger<size> getAuxiliaryModulusMask(uint32 modExponent) {
 template<int sizeMod>
 BigInteger<sizeMod> modularInverse(BigInteger<sizeMod> mod, uint32 auxModExp) {
     BigInteger<sizeMod> modPrime, l, rSubMod = (~mod) & (getAuxiliaryModulusMask<sizeMod>(auxModExp));
-    rSubMod.value[0] |= 1;
+    uint8 *rSubModRaw = (uint8 *) &rSubMod;
+    rSubModRaw[0] |= 1;
     extendedEuclidean(mod, rSubMod, modPrime, l);
 
     modPrime = l - modPrime;
@@ -1084,7 +1140,7 @@ BigInteger<sizeMod> BigInteger<size>::exp(BigInteger<sizeExponent> exp, BigInteg
 
     // Assert that the modulus value is odd. This is so the auxiliary modulus as a power of 2 works.
     // TODO: Deal with the case where 2 | mod
-    assert(mod.value[0] & 1);
+//    assert(mod.value[0] & 1);
 
     // First, we need to create an auxiliary modulus r, such that gcd(mod, r)=1 and r > mod. We will choose
     // r to be the smallest power of two greater than mod, as we are assuming that mod is an odd prime.
@@ -1106,6 +1162,47 @@ BigInteger<sizeMod> BigInteger<size>::exp(BigInteger<sizeExponent> exp, BigInteg
     // Next we multiply by r, which is equivalent to left shifting by rExp
     // <<= UNSTABLE
 //    rBase <<= rExp;
+    rBase = rBase << rExp;
+
+    // Finally to get the Montgomery form, we just take this under the modulus. This has to be done using the standard
+    // (slow) modulus function, but we only have to do this once per exponentiation
+    BigInteger<sizeMod> montgomeryBase = rBase % mod;
+
+    // Next we need the the value modPrime such that r*r^-1 - mod * modPrime = 1. To do this, we use
+    // the extended Euclidean algorithm. To avoid calculating r (as it might be an annoying size, i.e. a power
+    // of a power of two, meaning it requires 2 * sizeMod space) we instead notice that we can calculate n' a
+    // different way.
+    // We know rr' + nn' = 1, as gcd(r, n) = 1.
+    // Next, we let m~ be such that mm~ = 1 (mod (r - m)) <- r - n is in the range of a BigInteger<sizeMod>.
+    // Then we see that mm~ = 1 + k(r - m), and it follows that -kr + m(-k - m~) = 1. Let l = -k, lr + m(l - m~) = 1
+    // Now we see that l - m~ is just m', and we calculate m~ and l using the extended Euclidean function with m
+    // and r - n.
+    BigInteger<sizeMod> modPrime = modularInverse(mod, rExp);
+
+    return modularExponent(montgomeryBase, exp, mod, modPrime, rExp, rMask);
+}
+
+template<int size>
+template<int sizeMod>
+BigInteger<sizeMod> BigInteger<size>::exp(uint64 exp, BigInteger<sizeMod> mod) const {
+    // First, we need to create an auxiliary modulus r, such that gcd(mod, r)=1 and r > mod. We will choose
+    // r to be the smallest power of two greater than mod, as we are assuming that mod is an odd prime.
+    // As r is simply a power of 2, we will first just find the exponent.
+    uint32 rExp = sizeMod - mod.countLeadingZeros();
+
+    BigInteger<sizeMod> rMask = getAuxiliaryModulusMask<sizeMod>(rExp);
+
+    // Next, we need to find the base's Montgomery form representative. This is defined as b' = rb (mod n).
+    // Here, because the modulus is of arbitrary form, we have to use the slow standard modulus operation. After we
+    // have the number in Montgomery form, however, we can perform quick modular multiplication using the
+    // REDC algorithm.
+    // To calculate the dividend we simple have to multiply by r, which is the same as bit shifting left by
+    // rExp. We chose r specifically to make this operation low cost. We also know that shifting left by r
+    // gives a number of bit length at most 2 * MAX(size, sizeMod).
+
+    // First, we set rb = value. This casts it into a larger size.
+    BigInteger<MAX(size, sizeMod) * 2> rBase = *this;
+    // Next we multiply by r, which is equivalent to left shifting by rExp
     rBase = rBase << rExp;
 
     // Finally to get the Montgomery form, we just take this under the modulus. This has to be done using the standard
