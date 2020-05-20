@@ -1190,10 +1190,10 @@ TEST(BigIntegerAlgorithmTests, ModularExponentiation128By128Bit) {
     r3Raw[0] = 0x8005503e73094213, r3Raw[1] = 0xc614d9045350c81c;
 
     // ACT
-    uint128 c0 = a0.modularExponent(b0, m0);
-    uint128 c1 = a1.modularExponent(b1, m1);
-    uint128 c2 = a2.modularExponent(b2, m2);
-    uint128 c3 = a3.modularExponent(b3, m3);
+    uint128 c0 = a0.exp(b0, m0);
+    uint128 c1 = a1.exp(b1, m1);
+    uint128 c2 = a2.exp(b2, m2);
+    uint128 c3 = a3.exp(b3, m3);
 
     // ASSERT
     ASSERT_EQ(c0, r0);
@@ -1241,10 +1241,10 @@ TEST(BigIntegerAlgorithmTests, ModularExponentiation256By256Bit) {
     r3Raw[0] = 0x5c3a306dd893f864, r3Raw[1] = 0x543c1609ae60a360, r3Raw[2] = 0xed5c018cc90ecc19, r3Raw[3] = 0x47719d783915507d;
 
     // ACT
-    uint256 c0 = a0.modularExponent(b0, m0);
-    uint256 c1 = a1.modularExponent(b1, m1);
-    uint256 c2 = a2.modularExponent(b2, m2);
-    uint256 c3 = a3.modularExponent(b3, m3);
+    uint256 c0 = a0.exp(b0, m0);
+    uint256 c1 = a1.exp(b1, m1);
+    uint256 c2 = a2.exp(b2, m2);
+    uint256 c3 = a3.exp(b3, m3);
 
     // ASSERT
     ASSERT_EQ(c0, r0);
@@ -1292,10 +1292,10 @@ TEST(BigIntegerAlgorithmTests, ModularExponentiation512By512Bit) {
     r3Raw[0] = 0xe16f894da36136e1, r3Raw[1] = 0xc81dc53f613f831c, r3Raw[2] = 0x7c334ebf892ef5e8, r3Raw[3] = 0xf748c902036244e6, r3Raw[4] = 0x177062f2cf454ef5, r3Raw[5] = 0x9366950fd9c9b498, r3Raw[6] = 0x555f1de8956fdbe4, r3Raw[7] = 0x1ef69538969bd707;
 
     // ACT
-    uint512 c0 = a0.modularExponent(b0, m0);
-    uint512 c1 = a1.modularExponent(b1, m1);
-    uint512 c2 = a2.modularExponent(b2, m2);
-    uint512 c3 = a3.modularExponent(b3, m3);
+    uint512 c0 = a0.exp(b0, m0);
+    uint512 c1 = a1.exp(b1, m1);
+    uint512 c2 = a2.exp(b2, m2);
+    uint512 c3 = a3.exp(b3, m3);
 
     // ASSERT
     ASSERT_EQ(c0, r0);
@@ -1343,10 +1343,10 @@ TEST(BigIntegerAlgorithmTests, ModularExponentiation1024By1024Bit) {
     r3Raw[0] = 0xb2b7f9f79a145978, r3Raw[1] = 0xe24f8b604100286e, r3Raw[2] = 0x7739255f5b4aa05e, r3Raw[3] = 0xc11fe03edc14ea8f, r3Raw[4] = 0xd512a83639634414, r3Raw[5] = 0x3592f12c74022697, r3Raw[6] = 0x7a5ff0a515e738bc, r3Raw[7] = 0x05363a383865ffeb, r3Raw[8] = 0xc8a3c2705b5d51e4, r3Raw[9] = 0xc3f40ba6fc1add46, r3Raw[10] = 0xaaab525f41706413, r3Raw[11] = 0xd8cb9574619b442d, r3Raw[12] = 0x68f3379f36b14b0b, r3Raw[13] = 0xb2fe69c8cf902920, r3Raw[14] = 0x00062be7c2cf829b, r3Raw[15] = 0x50fac124aa182f06;
 
     // ACT
-    uint1024 c0 = a0.modularExponent(b0, m0);
-    uint1024 c1 = a1.modularExponent(b1, m1);
-    uint1024 c2 = a2.modularExponent(b2, m2);
-    uint1024 c3 = a3.modularExponent(b3, m3);
+    uint1024 c0 = a0.exp(b0, m0);
+    uint1024 c1 = a1.exp(b1, m1);
+    uint1024 c2 = a2.exp(b2, m2);
+    uint1024 c3 = a3.exp(b3, m3);
 
     // ASSERT
     ASSERT_EQ(c0, r0);
@@ -1394,10 +1394,10 @@ TEST(BigIntegerAlgorithmTests, ModularExponentiation2048By2048Bit) {
     r3Raw[0] = 0x2d9ae6b0e4b46188, r3Raw[1] = 0x0f53e8caf2c5f743, r3Raw[2] = 0x1ad92e89db216f0a, r3Raw[3] = 0x9318c42590a724c5, r3Raw[4] = 0x1c1f3a286e975b5f, r3Raw[5] = 0xa3f53e940824f4c3, r3Raw[6] = 0xd2f6b9c9941dc678, r3Raw[7] = 0x3cba5c90c74f8b9b, r3Raw[8] = 0x5037c75d16e8d0d3, r3Raw[9] = 0xe2bc2e7442b3c6f4, r3Raw[10] = 0xfb8602b1f58453cb, r3Raw[11] = 0x963cbb8ea37f2ea0, r3Raw[12] = 0x294baed4e113db1f, r3Raw[13] = 0x5d0a79bcfcc54a11, r3Raw[14] = 0xec128591fb87fb58, r3Raw[15] = 0x0bb97fcc7263a143, r3Raw[16] = 0x06457a125e1d73e8, r3Raw[17] = 0xe93081db79150375, r3Raw[18] = 0x7f1119133f93c25c, r3Raw[19] = 0x3742652a51987010, r3Raw[20] = 0x53d9589eacedf17d, r3Raw[21] = 0x7f05b6623b89fc6d, r3Raw[22] = 0x381e54c7a5987a0f, r3Raw[23] = 0x600b031d1be2ae8a, r3Raw[24] = 0x8439dcb2b5f67d73, r3Raw[25] = 0x52a4ec7182ae5c66, r3Raw[26] = 0xbc6260595ec7725f, r3Raw[27] = 0xfaabb33d0543cbc7, r3Raw[28] = 0x6d5333be329587cd, r3Raw[29] = 0x931d2b196c967e18, r3Raw[30] = 0x88a372c51d9d5483, r3Raw[31] = 0x8509aab8c4c4e274;
 
     // ACT
-    uint2048 c0 = a0.modularExponent(b0, m0);
-    uint2048 c1 = a1.modularExponent(b1, m1);
-    uint2048 c2 = a2.modularExponent(b2, m2);
-    uint2048 c3 = a3.modularExponent(b3, m3);
+    uint2048 c0 = a0.exp(b0, m0);
+    uint2048 c1 = a1.exp(b1, m1);
+    uint2048 c2 = a2.exp(b2, m2);
+    uint2048 c3 = a3.exp(b3, m3);
 
     // ASSERT
     ASSERT_EQ(c0, r0);

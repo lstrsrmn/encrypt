@@ -6,6 +6,7 @@
 #define ENCRYPT_BIGINTEGER_H
 
 #include <iostream>
+#include <cstring>
 
 template<int size>
 struct BigInteger;
@@ -44,6 +45,21 @@ void extendedEuclidean(const BigInteger<sizeA> &a, const BigInteger<sizeB> &b, B
 // UNUSED
 template<int sizeA, int sizeB>
 void multiply(uint32 *a, uint32 *b, uint32 *r);
+
+template<int sizeBase, int sizeExp, int sizeMod>
+BigInteger<sizeMod> modularExponent(
+        const BigInteger<sizeBase> montgomeryBase,
+        const BigInteger<sizeExp> exp,
+        const BigInteger<sizeMod> mod,
+        const BigInteger<sizeBase> inv,
+        uint32 rExp,
+        const BigInteger<sizeMod> rMask);
+
+template<int size>
+BigInteger<size> getAuxiliaryModulusMask(uint32 modExponent);
+
+template<int sizeMod>
+BigInteger<sizeMod> modularInverse(BigInteger<sizeMod> mod, uint32 auxModExp);
 
 // Testing function to print a BigInteger as a hexidecimal value
 template<int size>
@@ -139,9 +155,13 @@ public:
     template<int sizeOther>
     bool operator==(BigInteger<sizeOther> other) const;
 
+    bool operator==(uint64 other) const;
+
     // Inequality operator
     template<int sizeOther>
     bool operator!=(BigInteger<sizeOther> other) const;
+
+    bool operator!=(uint64 other) const;
 
     // Strict greater than operator
     template<int sizeOther>
@@ -161,7 +181,10 @@ public:
 
     // Exponentiation operator of two arbitrarily sized BigIntegers, under a provided modulus ring
     template<int sizeExponent, int sizeMod>
-    BigInteger<sizeMod> modularExponent(BigInteger<sizeExponent> exp, BigInteger<sizeMod> mod) const;
+    BigInteger<sizeMod> exp(BigInteger<sizeExponent> exp, BigInteger<sizeMod> mod) const;
+
+    // Count the number of leading zeros of the number
+    uint32 countLeadingZeros() const;
 
     // Default constructor for BigInteger types. Initialises the value to 0
     BigInteger();
@@ -243,7 +266,7 @@ void extendedEuclidean(const BigInteger<sizeA> &a, const BigInteger<sizeB> &b, B
         x1 = x1 - (y1 * quotient);
 
         // If a is 0, we can now return. The correct x and y values will be stored in y0 and y1 at this point.
-        if (_a == BigInteger<sizeA>()) {
+        if (_a == 0) {
             x = y0;
             y = y1;
             return;
@@ -256,7 +279,7 @@ void extendedEuclidean(const BigInteger<sizeA> &a, const BigInteger<sizeB> &b, B
         y1 = y1 - (x1 * quotient);
 
         // Now that we have essentially swapped the variables, we must instead check if b is 0
-        if (_b == BigInteger<sizeB>()) {
+        if (_b == 0) {
             x = x0;
             y = x1;
             return;
@@ -364,6 +387,89 @@ void multiply(uint32 *a, uint32 *b, uint32 *r) {
     }
 }
 
+template<int sizeBase, int sizeExp, int sizeMod>
+BigInteger<sizeMod> modularExponent(
+        const BigInteger<sizeBase> montgomeryBase,
+        const BigInteger<sizeExp> exp,
+        const BigInteger<sizeMod> mod,
+        const BigInteger<sizeBase> inv,
+        uint32 rExp,
+        const BigInteger<sizeMod> rMask) {
+    // A flag to determine whether or not we have found the most significant 1 yet. This improves the efficiency
+    // of the algorithm
+    bool startBitFound = false;
+
+    // The start value of the result. We initialise it to be such that it is congruent to r to begin with, so
+    BigInteger<sizeMod> result = ~mod & rMask;
+    result.value[0] |= 1;
+
+    // First, we loop through each bit in the modulus in reverse order
+    for (int i = (sizeMod / 64) - 1; i >= 0; i--) {
+        // If the whole uint64 is 0 and we haven't found the first 1 yet, we can just skip it.
+        if (exp.value[i] || startBitFound) {
+            for (int j = 63; j >= 0; j--) {
+                // checkBit is set to whatever the value in this bit is
+                bool checkBit = (exp.value[i] >> j) & 1u;
+                // If the start bit was already found, or if this bit was 1, then we know the start bit has been found
+                startBitFound |= checkBit;
+
+                // (For efficiency) if we have the most significant bit, we need to perform the squaring and if
+                // necessary multiplying.
+                if (startBitFound) {
+                    // Square the result
+                    result = redc(rMask, rExp, mod, inv, result * result);
+
+                    // If the bit was set, additionally multiply the result by the base
+                    if (checkBit) {
+                        result = redc(rMask, rExp, mod, inv, result * montgomeryBase);
+                    }
+                }
+            }
+        }
+    }
+
+    // Finally apply the redc algorithm one more time to the value. This has the effect of multiplying again by
+    // the multiplicative inverse of r, so we end up with the true value (not in Montgomery form)
+    return redc(rMask, rExp, mod, inv, result);
+}
+
+template<int size>
+BigInteger<size> getAuxiliaryModulusMask(uint32 modExponent) {
+    // Now we can construct a mask for taking the modulus under r, which is equal to just taking the last (rExp - 1)
+    // bits of a number.
+    BigInteger<size> rMask;
+
+    // Get the number of uint64s which are all 1s
+    uint32 fullMasks = modExponent / 64;
+    // Get the number of bits in the most significant uint64 that should be 1s
+    uint8 maskRemainder = modExponent % 64;
+
+    // Loop through each low uint64
+    for (int i = 0; i < fullMasks; i++) {
+        // Set the value at each uint64 lower than rExp to all 1s
+        rMask.value[i] = -1UL;
+    }
+
+    // If we have a remainder to write, set the most significant uint64 to -1 shifted by 64 - the number of bits we need
+    // which will leave the correct number of bits as 1, whilst setting all the others to 0.
+    if (maskRemainder != 0) {
+        rMask.value[fullMasks] = (-1UL) >> (64 - maskRemainder);
+    }
+
+    return rMask;
+}
+
+template<int sizeMod>
+BigInteger<sizeMod> modularInverse(BigInteger<sizeMod> mod, uint32 auxModExp) {
+    BigInteger<sizeMod> modPrime, l, rSubMod = (~mod) & (getAuxiliaryModulusMask<sizeMod>(auxModExp));
+    rSubMod.value[0] |= 1;
+    extendedEuclidean(mod, rSubMod, modPrime, l);
+
+    modPrime = l - modPrime;
+
+    return modPrime;
+}
+
 template<int size>
 template<int sizeOther>
 BigInteger<MAX(size, sizeOther)> BigInteger<size>::operator+(BigInteger<sizeOther> other) const {
@@ -455,46 +561,43 @@ BigInteger<MAX(size, sizeOther) * 2> BigInteger<size>::operator*(BigInteger<size
 //        return _r;
 //    }
 
+    // We want to keep all BigIntegers as power of two lengths, so we cannot simply add
+    // size to sizeOther. Thus, we take 2 times the largest of them.
+    BigInteger<MAX(size, sizeOther) * 2> result;
+    // For writing the values from the products in, we must now cast the result value array to uint32.
+    uint32 *r = (uint32 *) result.value;
+
+    // Trivial case where one of the inputs is 0
+    if (*this == 0 || other == 0) {
+        return result;
+    }
+
     // First, view the data as an array of uint32's rather than uint64's. This is so we can use standard
     // multiplication of uint64's without overflowing
     uint32 *aVal = (uint32 *) value;
     uint32 *bVal = (uint32 *) other.value;
 
-    // We want to keep all BigIntegers as power of two lengths, so we cannot simply add
-    // size to sizeOther. Thus, we take 2 times the largest of them.
-    BigInteger<MAX(size, sizeOther) * 2> result;
-    // For writing the values from the products in, we must now cast the result value array to uint32 as well.
-    uint32 *r = (uint32 *) result.value;
+    uint64 carry;
+    uint32 *bEnd = bVal + (sizeOther / 32);
 
     // We first loop through each uint32 in the first number
     for (int i = 0; i < (size / 32); i++) {
         // We get this value and cast it into a uint64, so full multiplication can occur.
         // We do this before the internal loop so we can minimise memory lookups
         uint64 _a = aVal[i];
-        // We secondly loop through each uint32 in the second number
-        for (int j = 0; j < (sizeOther / 32); j++) {
-            // We get the second value (from the other number) and then multiply them into a result, _r.
-            // Note that _r cannot overflow because we know that both _a, _b < 2^32, so _a*_b < 2^64.
-            uint64 _b = bVal[j];
-            uint64 _r = _a * _b;
 
-            // We now view this result as 2 uint32's. The lower of these contains the less significant 4 bytes
-            uint32 *_r32 = (uint32 *) &_r;
-            // The numbers at these cells actually correspond to _a*2^(32i) and _b*2^(32j) because we are
-            // viewing more significant bits. Therefore, _a*_b is actually _a*_b*2^(32(i+j)) which corresponds
-            // to writing the (i + j)th slot in the result.
-            r[i + j] += _r32[0];
-            // We then add the upper 4 bytes to the next uint32 value, plus a potential carry (this is always
-            // in bounds because 2^(size - 1 + size - 1 + 1) = 2^(2 * size - 1).
-            r[i + j + 1] += _r32[1] + (r[i + j] < _r32[0]);
+        carry = 0;
+        uint32 *_b = bVal;
+        uint32 *_r = r + i;
 
-            // We finally cascade the potential further carry bits, similarly to the way this is performed in
-            // the addition function
-            bool carry = r[i + j + 1] < _r32[1];
-            for (int k = i + j + 2; (k < (MAX(size, sizeOther) / 16)) && carry; k++) {
-                r[k] += 1;
-                carry = r[k] == 0;
-            }
+        while (_b < bEnd) {
+            carry += *_r + (_a * *_b++);
+            *_r++ = carry;
+            carry >>= 32u;
+        }
+
+        if (carry) {
+            r[i + (sizeOther / 32)] += carry;
         }
     }
 
@@ -604,7 +707,7 @@ void BigInteger<size>::modAndDivide(BigInteger<sizeDivisor> divisor, BigInteger<
 
     // We know this should be true because m < n => dividend < divisor, and so we would have returned the trivial
     // case above
-    assert(m >= n);
+//    assert(m >= n);
 
     // We allocate a separate array of uint32's for the normalised versions of u and v. Note that un has an extra
     // digit to prevent loss of information from overflow
@@ -856,6 +959,21 @@ bool BigInteger<size>::operator==(BigInteger<sizeOther> other) const {
 }
 
 template<int size>
+bool BigInteger<size>::operator==(uint64 other) const {
+    if (value[0] != other) {
+        return false;
+    }
+
+    for (int i = 1; i < size / 64; i++) {
+        if (value[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+template<int size>
 template<int sizeOther>
 bool BigInteger<size>::operator!=(BigInteger<sizeOther> other) const {
     // First loop over the shared uint64's that we know that both instances have
@@ -876,6 +994,21 @@ bool BigInteger<size>::operator!=(BigInteger<sizeOther> other) const {
     }
 
     // If we didn't find any inequality, the numbers must be equal
+    return false;
+}
+
+template<int size>
+bool BigInteger<size>::operator!=(uint64 other) const {
+    if (value[0] != other) {
+        return true;
+    }
+
+    for (int i = 1; i < size / 64; i++) {
+        if (value[i]) {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -947,7 +1080,8 @@ bool BigInteger<size>::operator<=(BigInteger<sizeOther> other) const {
 
 template<int size>
 template<int sizeExponent, int sizeMod>
-BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> exp, BigInteger<sizeMod> mod) const {
+BigInteger<sizeMod> BigInteger<size>::exp(BigInteger<sizeExponent> exp, BigInteger<sizeMod> mod) const {
+
     // Assert that the modulus value is odd. This is so the auxiliary modulus as a power of 2 works.
     // TODO: Deal with the case where 2 | mod
     assert(mod.value[0] & 1);
@@ -955,51 +1089,9 @@ BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> e
     // First, we need to create an auxiliary modulus r, such that gcd(mod, r)=1 and r > mod. We will choose
     // r to be the smallest power of two greater than mod, as we are assuming that mod is an odd prime.
     // As r is simply a power of 2, we will first just find the exponent.
-    uint32 rExp;
+    uint32 rExp = sizeMod - mod.countLeadingZeros();
 
-    // We must find the most significant 1 in the modulus, so we start by looping through the uint64's
-    // in reverse order.
-    for (int i = (sizeMod / 64) - 1; i >= 0; i--) {
-        // As soon as we find a value which is none zero, we know the most significant 1 is in this uint64
-        if (mod.value[i]) {
-            // Loop through each bit of this uint64 in reverse order. The worst case performance of this is
-            // quite slow, however the chances are that the most significant one will be high up the uint64
-            // as n will generally be random
-//            for (int j = 63; j >= 0; j--) {
-//                // If this bit is 1, set r (or its exponent) to be the next most significant bit
-//                if ((mod.value[i] >> j) & 1u) {
-//                    rExp = i * 64 + j + 1;
-//                    break;
-//                }
-//            }
-            // Get the number of leading zeros in this uint64. This builtin function should be optimised by gcc
-            uint8 leadingZeros = __builtin_clzl(mod.value[i]);
-            // Calculate the exponent as the index of the most signficant 1. This will mean that r/2 < mod < r
-            rExp = (i + 1) * 64 - leadingZeros;
-            break;
-        }
-    }
-
-    // Now we can construct a mask for taking the modulus under r, which is equal to just taking the last (rExp - 1)
-    // bits of a number.
-    BigInteger<sizeMod> rMask;
-
-    // Get the number of uint64s which are all 1s
-    uint32 fullMasks = rExp / 64;
-    // Get the number of bits in the most significant uint64 that should be 1s
-    uint8 maskRemainder = rExp % 64;
-
-    // Loop through each low uint64
-    for (int i = 0; i < fullMasks; i++) {
-        // Set the value at each uint64 lower than rExp to all 1s
-        rMask.value[i] = -1;
-    }
-
-    // If we have a remainder to write, set the most significant uint64 to -1 shifted by 64 - the number of bits we need
-    // which will leave the correct number of bits as 1, whilst setting all the others to 0.
-    if (maskRemainder != 0) {
-        rMask.value[fullMasks] = (-1UL) >> (64 - maskRemainder);
-    }
+    BigInteger<sizeMod> rMask = getAuxiliaryModulusMask<sizeMod>(rExp);
 
     // Next, we need to find the base's Montgomery form representative. This is defined as b' = rb (mod n).
     // Here, because the modulus is of arbitrary form, we have to use the slow standard modulus operation. After we
@@ -1018,7 +1110,6 @@ BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> e
 
     // Finally to get the Montgomery form, we just take this under the modulus. This has to be done using the standard
     // (slow) modulus function, but we only have to do this once per exponentiation
-    // TODO: Maybe cache the Montgomery base?
     BigInteger<sizeMod> montgomeryBase = rBase % mod;
 
     // Next we need the the value modPrime such that r*r^-1 - mod * modPrime = 1. To do this, we use
@@ -1030,73 +1121,27 @@ BigInteger<sizeMod> BigInteger<size>::modularExponent(BigInteger<sizeExponent> e
     // Then we see that mm~ = 1 + k(r - m), and it follows that -kr + m(-k - m~) = 1. Let l = -k, lr + m(l - m~) = 1
     // Now we see that l - m~ is just m', and we calculate m~ and l using the extended Euclidean function with m
     // and r - n.
-    BigInteger<sizeMod> modPrime, l, rSubMod = ~mod & rMask;
-    rSubMod.value[0] |= 1;
-    extendedEuclidean(mod, rSubMod, modPrime, l);
+    BigInteger<sizeMod> modPrime = modularInverse(mod, rExp);
 
-    modPrime = l - modPrime;
+    return modularExponent(montgomeryBase, exp, mod, modPrime, rExp, rMask);
+}
 
-    // To actually perform the exponentiation, we use a combination of squaring and multiplying the current result
-    // and take the value under the modulus at each stage. Using this approach, we can compute the result of the
-    // exponentiation in <= 2 * ceil(log2(mod)) time, as we perform at most 2 operations per bit.
-
-    // A flag to determine whether or not we have found the most significant 1 yet. This improves the efficiency
-    // of the algorithm
-    bool startBitFound = false;
-
-    // The start value of the result. We initialise it to 1 so when we multiply things with it we don't just lose
-    // the values by multiplying by 0
-    BigInteger<sizeMod> result = rSubMod;
-
-//    std::cout << "PRECONDITION" << std::endl;
-//    std::cout << "A: ";
-//    TEST_printHex(*this);
-//    std::cout << "B: ";
-//    TEST_printHex(exp);
-//    std::cout << "M: ";
-//    TEST_printHex(mod);
-//    std::cout << "M': ";
-//    TEST_printHex(modPrime);
-//    std::cout << "REXP: " << rExp << std::endl;
-//    std::cout << "RMASK: ";
-//    TEST_printHex(rMask);
-//
-//    std::cout << "RBASE: ";
-//    TEST_printHex(rBase);
-//    std::cout << "A Montgomery: ";
-//    TEST_printHex(montgomeryBase);
-//
-//    std::cout << "Result (start): ";
-//    TEST_printHex(result);
-
-    // First, we loop through each bit in the modulus in reverse order
-    for (int i = (sizeMod / 64) - 1; i >= 0; i--) {
-        // If the whole uint64 is 0 and we haven't found the first 1 yet, we can just skip it.
-        if (exp.value[i] || startBitFound) {
-            for (int j = 63; j >= 0; j--) {
-                // checkBit is set to whatever the value in this bit is
-                bool checkBit = (exp.value[i] >> j) & 1u;
-                // If the start bit was already found, or if this bit was 1, then we know the start bit has been found
-                startBitFound |= checkBit;
-
-                // (For efficiency) if we have the most significant bit, we need to perform the squaring and if
-                // necessary multiplying.
-                if (startBitFound) {
-                    // Square the result
-                    result = redc(rMask, rExp, mod, modPrime, result * result);
-
-                    // If the bit was set, additionally multiply the result by the base
-                    if (checkBit) {
-                        result = redc(rMask, rExp, mod, modPrime, result * montgomeryBase);
-                    }
-                }
-            }
+template<int size>
+uint32 BigInteger<size>::countLeadingZeros() const {
+    uint32 lZeros = 0;
+    // We must find the most significant 1, so we start by looping through the uint64's
+    // in reverse order.
+    for (int i = (size / 64) - 1; i >= 0; i--) {
+        // As soon as we find a value which is non zero, we know the most significant 1 is in this uint64
+        if (value[i]) {
+            // Get the number of leading zeros in this uint64. This builtin function should be optimised by gcc
+            uint8 leadingZeros = __builtin_clzl(value[i]);
+            lZeros += leadingZeros;
+            break;
         }
+        lZeros += 64;
     }
-
-    // Finally apply the redc algorithm one more time to the value. This has the effect of multiplying again by
-    // the multiplicative inverse of r, so we end up with the true value (not in Montgomery form)
-    return redc(rMask, rExp, mod, modPrime, result);
+    return lZeros;
 }
 
 template<int size>
