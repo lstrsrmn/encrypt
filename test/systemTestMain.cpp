@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-#include "../include/keyGenerator.h"
+#include "../include/encrypt.h"
 #include <chrono>
 
 int main() {
@@ -12,13 +12,20 @@ int main() {
 
     start = std::chrono::system_clock::now();
 
-    KeyPair kp = generateKeyPair();
-    char messageText[] = "Hello, World!";
+    RSAKeyPair kp = generateRSAKeyPair();
+
+    end = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> elapsed = end - start;
+
+    std::cout << "Time to gen key: " << elapsed.count() << std::endl;
+
+    start = std::chrono::system_clock::now();
 
     uint2048 message = 53;
 //    memcpy(&message, messageText, sizeof(messageText));
 
-    uint2048 cipher = kp.publicKey.encrypt(message);
+    uint2048 cipher = encrypt(message, kp.publicKey);
 
 //    char buff[257];
 //    memcpy(buff, &cipher, 256);
@@ -26,7 +33,7 @@ int main() {
 
     std::cout << cipher.value[0] << std::endl;
 
-    uint2048 decrypted = kp.privateKey.decrypt(cipher);
+    uint2048 decrypted = decrypt(cipher, kp.privateKey);
 
 //    char buff2[257];
 //    memcpy(buff2, &decrypted, 256);
@@ -35,10 +42,8 @@ int main() {
     std::cout << decrypted.value[0] << std::endl;
 
     end = std::chrono::system_clock::now();
-
-    std::chrono::duration<double> elapsed = end - start;
-
-    std::cout << "Time: " << elapsed.count() << std::endl;
+    elapsed = end - start;
+    std::cout << "Time to encrypt/decrypt: " << elapsed.count() << std::endl;
 
     return 0;
 }

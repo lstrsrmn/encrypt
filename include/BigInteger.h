@@ -42,7 +42,7 @@ BigInteger<sizeMod> redc(BigInteger<sizeMod> auxModMask, uint32 auxModExp,
 template<int sizeA, int sizeB>
 void extendedEuclidean(const BigInteger<sizeA> &a, const BigInteger<sizeB> &b, BigInteger<sizeB> &x, BigInteger<sizeA> &y);
 
-// UNUSED
+// UNUSED Karatsuba Multiplication
 template<int sizeA, int sizeB>
 void multiply(uint32 *a, uint32 *b, uint32 *r);
 
@@ -211,11 +211,16 @@ public:
     template<int sizeOther>
     BigInteger(const BigInteger<sizeOther> &val);
 
+public:
     // Create an array to store the number in memory. The size parameter
     // is given in bits, so the actual value is the size divided by 64.
     // This is defaulted to 0.
     // The least significant byte is the first byte of this array
     uint64 value[size / 64] = {0};
+};
+
+struct REDCAuxiliaryModulus {
+
 };
 
 template<int sizeMod, int sizeValue>

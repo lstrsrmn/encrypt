@@ -9,14 +9,11 @@
 
 #include "BigInteger.h"
 #include "safeRandom.h"
-
-struct PublicKey;
-struct PrivateKey;
-struct KeyPair;
+#include "key.h"
 
 // Generate a prime BigInteger with the given size
 template<int size>
-BigInteger<size> generatePrime();
+BigInteger<size> generatePrime(int security = 12);
 
 // Test if a given BigInteger is prime, probabilistically with the Miller-Rabin test
 template<int size>
@@ -28,58 +25,14 @@ bool
 millerRabin(BigInteger<size> p, BigInteger<size> d, uint32 r, BigInteger<size> pSub1, BigInteger<size> inv, uint32 rExp,
             BigInteger<size> rMask);
 
-// Generate a Public-Private key pair
-KeyPair generateKeyPair();
+// Generate an asymmetric Public-Private key pair
+RSAKeyPair generateRSAKeyPair();
 
-// 2048 Bit Public Key
-struct PublicKey {
-    uint2048 n;
-    uint32 e;
-
-    PublicKey() = default;
-
-    PublicKey(uint2048 n, uint32 e);
-
-    uint2048 encrypt(uint2048 message);
-};
-
-PublicKey::PublicKey(uint2048 n, uint32 e) {
-    this->n = n;
-    this->e = e;
-}
-
-uint2048 PublicKey::encrypt(uint2048 message) {
-    return message.exp(e, n);
-}
-
-struct PrivateKey {
-    uint2048 n;
-    uint2048 d;
-
-    PrivateKey() = default;
-
-    PrivateKey(uint2048 n, uint2048 d);
-
-    uint2048 decrypt(uint2048 cipher);
-};
-
-PrivateKey::PrivateKey(uint2048 n, uint2048 d) {
-    this->n = n;
-    this->d = d;
-}
-
-uint2048 PrivateKey::decrypt(uint2048 cipher) {
-    return cipher.exp(d, n);
-}
-
-
-struct KeyPair {
-    PublicKey publicKey;
-    PrivateKey privateKey;
-};
+// Generate a symmetric AES key
+AESKey generateAESKey();
 
 template<int size>
-BigInteger<size> generatePrime() {
+BigInteger<size> generatePrime(int security) {
     // Initialise the prime
     BigInteger<size> prime;
     // Get a pointer to the data stored in the prime
@@ -90,7 +43,7 @@ BigInteger<size> generatePrime() {
     _pBuff[0] |= 1;
 
     // Keep testing until the number is prime
-    while (!testPrime(prime, 8)) {
+    while (!testPrime(prime, security)) {
         // If the number was composite, make a new one
         CryptoSafeRandom::random(_pBuff, size / 8);
         _pBuff[0] |= 1;
@@ -187,35 +140,6 @@ millerRabin(BigInteger<size> p, BigInteger<size> d, uint32 r, BigInteger<size> p
 
     // If we got to a^(p - 1) without finding any 1s or -1s, the number is definitely composite
     return false;
-}
-
-KeyPair generateKeyPair() {
-    const uint128 one = 1;
-
-    KeyPair keyPair;
-    // Generate two large random primes
-    uint1024 p = generatePrime<1024>();
-    uint1024 q = generatePrime<1024>();
-
-    uint2048 n = p * q;
-    uint2048 psi = (p - one) * (q - one);
-
-    BigInteger<64> eBI = 65537, unused;
-    uint2048 d;
-
-    extendedEuclidean(eBI, psi, d, unused);
-
-    uint32 e = eBI.value[0];
-
-    keyPair.privateKey = {n, d};
-    keyPair.publicKey = {n, e};
-
-    // Overwrite the memory of the large primes to destroy them
-    memset(&p, 0, 128);
-    memset(&q, 0, 128);
-    memset(&psi, 0, 256);
-
-    return keyPair;
 }
 
 #endif //ENCRYPT_KEYGENERATOR_H

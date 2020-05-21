@@ -232,30 +232,3 @@ TEST(KeyGeneratorAlgorithmTests, MillerRabinTestPrime1024Bit) {
     ASSERT_EQ(c6, r6);
     ASSERT_EQ(c7, r7);
 }
-
-TEST(KeyGeneratorAlgorithmTests, KeyPairEncryptionAndDecryptionTest) {
-    // ARRANGE
-    KeyPair kp = generateKeyPair();
-    char messageText[] = "Hello, World!";
-
-    uint2048 message;
-    memcpy(&message, messageText, sizeof(messageText));
-
-    // ACT
-    uint2048 cipher = kp.publicKey.encrypt(message);
-
-    char buff[257];
-    memcpy(buff, &cipher, 256);
-    buff[256] = 0;
-
-    std::cout << buff << std::endl;
-
-    uint2048 decrypted = kp.privateKey.decrypt(cipher);
-
-    char buff2[257];
-    memcpy(buff2, &decrypted, 256);
-    buff2[256] = 0;
-
-    // ASSERT
-    ASSERT_EQ(buff2, "Hello, World!");
-}
