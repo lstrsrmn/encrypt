@@ -7,7 +7,7 @@ set(PROJECT_TEST ${PROJECT_NAME}_test)
 set(PROJECT_SYS_TEST ${PROJECT_NAME}_sys_test)
 
 set(SOURCE_FILES include/encrypt.h src/encrypt.cpp include/BigInteger.h include/keyGenerator.h src/keyGenerator.cpp include/safeRandom.h
-        src/safeRandom.cpp include/key.h src/key.cpp)
+        src/safeRandom.cpp include/key.h src/key.cpp src/aes.cpp include/aes.h src/sha.cpp include/sha.h)
 set(TEST_FILES test/unitTestMain.cpp test/test_BigInteger.cpp test/test_BigIntegerAlgorithms.cpp test/test_keyGenerator.cpp)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib/googletest gtest-build)
