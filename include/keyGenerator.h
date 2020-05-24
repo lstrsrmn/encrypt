@@ -12,18 +12,18 @@
 #include "key.h"
 
 // Generate a prime BigInteger with the given size
-template<int size>
+template<uint32 size>
 BigInteger<size> generatePrime(int security = 12);
 
 // Test if a given BigInteger is prime, probabilistically with the Miller-Rabin test
-template<int size>
-bool testPrime(BigInteger<size> p, int security);
+template<uint32 size>
+bool testPrime(const BigInteger<size> &p, int security);
 
 // Miller-Rabin test to test a number with a single witness
-template<int size>
+template<uint32 size>
 bool
-millerRabin(BigInteger<size> p, BigInteger<size> d, uint32 r, BigInteger<size> pSub1, BigInteger<size> inv, uint32 rExp,
-            BigInteger<size> rMask);
+millerRabin(const BigInteger<size> &p, const BigInteger<size> &d, uint32 r, const BigInteger<size> &pSub1, const BigInteger<size> &inv,
+        REDCAuxiliaryModulus<size> auxMod);
 
 // Generate an asymmetric Public-Private key pair
 RSAKeyPair generateRSAKeyPair();
@@ -31,7 +31,7 @@ RSAKeyPair generateRSAKeyPair();
 // Generate a symmetric AES key
 AESKey generateAESKey();
 
-template<int size>
+template<uint32 size>
 BigInteger<size> generatePrime(int security) {
     // Initialise the prime
     BigInteger<size> prime;
@@ -39,21 +39,21 @@ BigInteger<size> generatePrime(int security) {
     uint8 *_pBuff = (uint8 *) &prime;
     // Generate a random number and set the least significant bit to 1 (if it is even it is definitely not prime
     // so there is no point in check it)
-    CryptoSafeRandom::random(_pBuff, size / 8);
+    CryptoSafeRandom::random(_pBuff, size * 8);
     _pBuff[0] |= 1;
 
     // Keep testing until the number is prime
     while (!testPrime(prime, security)) {
         // If the number was composite, make a new one
-        CryptoSafeRandom::random(_pBuff, size / 8);
+        CryptoSafeRandom::random(_pBuff, size * 8);
         _pBuff[0] |= 1;
     }
 
     return prime;
 }
 
-template<int size>
-bool testPrime(BigInteger<size> p, int security) {
+template<uint32 size>
+bool testPrime(const BigInteger<size> &p, int security) {
     // We need to use p-1 a few times, so it is quicker to calculate it once here
     BigInteger<size> pSub1 = p - BigInteger<size>(1);
 
@@ -64,8 +64,10 @@ bool testPrime(BigInteger<size> p, int security) {
     // To do this fast, we use the raw data of the number
     uint64 *nSub1Raw = (uint64 *) &pSub1;
 
+    // TODO: Add count trailing zeros function
+
     // Loop through each uint64 starting from the least significant
-    for (int i = 0; i < size / 64; i++) {
+    for (int i = 0; i < size; i++) {
         // If this uint64 is non zero and we haven't yet broken, the least significant 1 is here
         if (nSub1Raw[i]) {
             r += __builtin_ctzl(nSub1Raw[i]);
@@ -80,14 +82,14 @@ bool testPrime(BigInteger<size> p, int security) {
 
     // Because the modulus is constant, we can also calculate the modular inverse and mask before the loop
     // so we only have to run the Euclidean algorithm once per check
-    uint32 rExp = size - p.countLeadingZeros();
-    BigInteger<size> rMask = getAuxiliaryModulusMask<size>(rExp);
-    BigInteger<size> inv = modularInverse(p, rExp);
+    uint32 rExp = 64 * size - p.countLeadingZeros();
+    REDCAuxiliaryModulus<size> auxMod(rExp);
+    BigInteger<size> inv = redcModularInverse(p, auxMod);
 
     // We now check the number using the Miller Rabin test. We know that if the test returns false then
     // the number is definitely composite, so we can return early in that case
     for (int check = 0; check < security; check++) {
-        if (!millerRabin(p, d, r, pSub1, inv, rExp, rMask)) {
+        if (!millerRabin(p, d, r, pSub1, inv, auxMod)) {
             return false;
         }
     }
@@ -96,21 +98,21 @@ bool testPrime(BigInteger<size> p, int security) {
     return true;
 }
 
-template<int size>
+template<uint32 size>
 bool
-millerRabin(BigInteger<size> p, BigInteger<size> d, uint32 r, BigInteger<size> pSub1, BigInteger<size> inv, uint32 rExp,
-            BigInteger<size> rMask) {
+millerRabin(const BigInteger<size> &p, const BigInteger<size> &d, uint32 r, const BigInteger<size> &pSub1, const BigInteger<size> &inv,
+        REDCAuxiliaryModulus<size> auxMod) {
     // Generate a random witness number
     BigInteger<size> a;
-    CryptoSafeRandom::random(&a, size / 8);
+    CryptoSafeRandom::random(&a, size * 8);
 
     // Convert the witness to Montgomery form
     BigInteger<size * 2> rBase = a;
-    rBase = rBase << rExp;
+    rBase = rBase << auxMod.exponent();
     BigInteger<size> montgomeryBase = rBase % p;
 
     // Calculate a^d mod p
-    BigInteger<size> power = modularExponent(montgomeryBase, d, p, inv, rExp, rMask);
+    BigInteger<size> power = modularExponent(montgomeryBase, d, p, inv, auxMod);
 
     // By Fermat's Little Theorem, we know that if p is prime, a^(p-1) = 1 (mod p) for all a (except 0)
     // As we know that p-1 = d * 2^r, if p is prime, then each time we take the square root, we either get
