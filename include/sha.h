@@ -7,6 +7,8 @@
 
 #include "BigInteger.h"
 
-uint256 sha256(uint512 message);
+#define ROTATE_RIGHT_32(x, shift) ((uint32) (x >> shift) | (x << (32u - shift)))
+
+uint256 sha256(const uint8 *message, uint64 messageSize);
 
 #endif //ENCRYPT_SHA_H

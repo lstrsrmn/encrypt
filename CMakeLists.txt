@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(encrypt)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 set(PROJECT_TEST ${PROJECT_NAME}_test)
 set(PROJECT_SYS_TEST ${PROJECT_NAME}_sys_test)

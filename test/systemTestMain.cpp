@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-use-auto"
 //
 // Created by matthew on 19/05/2020.
 //
@@ -6,6 +8,7 @@
 
 #include "../include/encrypt.h"
 #include <chrono>
+#include <unistd.h>
 
 int main() {
 //    std::chrono::system_clock::time_point start, end;
@@ -55,31 +58,56 @@ int main() {
 //
 //    TEST_printHex(key.key);
 
-    AESKey key = generateAESKey();
-    uint64 initVector;
-    CryptoSafeRandom::random(&initVector, sizeof(uint64));
+//    AESKey key = generateAESKey();
+//    uint64 initVector;
+//    CryptoSafeRandom::random(&initVector, sizeof(uint64));
+//
+//    char msg[] = "Lorem ipsum";
+//
+//    std::cout << sizeof(msg) << std::endl;
+//
+//    std::chrono::system_clock::time_point start, end;
+//
+//    start = std::chrono::system_clock::now();
+//
+//    uint8 *encrypted = encrypt((uint8 *) msg, sizeof(msg), initVector, key);
+//    uint8 *decrypted = decrypt(encrypted, sizeof(msg), initVector, key);
+//
+//    end = std::chrono::system_clock::now();
+//    std::chrono::duration<double> elapsed = end - start;
+//
+//    std::cout << "Encrypted to: " << encrypted << std::endl;
+//    std::cout << "Decrypted to: " << decrypted << std::endl;
+//
+//    std::cout << "Time: " << elapsed.count() << std::endl;
+//
+//    delete [] decrypted;
+//    delete [] encrypted;
 
-    char msg[] = "Lorem ipsum";
+//    RSAKeyPair keyPair = generateRSAKeyPair();
+//
+//    const char *pw = getpass("Enter password: ");
+//
+//    uint256 hash = sha256((const uint8 *) pw, strlen(pw));
+//
+//    delete pw;
+//
+//    TEST_printHex(keyPair.privateKey.n);
+//    TEST_printHex(keyPair.privateKey.d);
+//
+//    lockPrivateKey(keyPair.privateKey, "/home/matthew/database-manager/keys/test_key.pri", hash);
 
-    std::cout << sizeof(msg) << std::endl;
-
-    std::chrono::system_clock::time_point start, end;
-
-    start = std::chrono::system_clock::now();
-
-    uint8 *encrypted = encrypt((uint8 *) msg, sizeof(msg), initVector, key);
-    uint8 *decrypted = decrypt(encrypted, sizeof(msg), initVector, key);
-
-    end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed = end - start;
-
-    std::cout << "Encrypted to: " << encrypted << std::endl;
-    std::cout << "Decrypted to: " << decrypted << std::endl;
-
-    std::cout << "Time: " << elapsed.count() << std::endl;
-
-    delete [] decrypted;
-    delete [] encrypted;
+//    const char *pw = getpass("Enter password: ");
+//
+//    uint256 hash = sha256((const uint8 *) pw, strlen(pw));
+//
+//    delete pw;
+//
+//    PrivateKey key = unlockPrivateKey("/home/matthew/database-manager/keys/test_key.pri", hash);
+//
+//    TEST_printHex(key.n);
+//    TEST_printHex(key.d);
 
     return 0;
 }
+#pragma clang diagnostic pop

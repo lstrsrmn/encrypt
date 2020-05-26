@@ -18,6 +18,14 @@ uint2048 decrypt(uint2048 cipher, PrivateKey key) {
     return cipher.exp(key.d, key.n);
 }
 
+uint2048 sign(const uint2048 &message, PrivateKey key) {
+    return message.exp(key.d, key.n);
+}
+
+uint2048 checkSignature(const uint2048 &cipher, PublicKey key) {
+    return cipher.exp(key.e, key.n);
+}
+
 uint8 *encrypt(uint8 *message, uint64 messageSize, uint64 initialisationVector, AESKey key) {
     uint128 roundKeys[aesRounds + 1];
     generateRoundKeys(key, roundKeys);
@@ -73,7 +81,7 @@ uint8 *decrypt(uint8 *cipher, uint64 messageSize, uint64 initialisationVector, A
     return encrypt(cipher, messageSize, initialisationVector, key);
 }
 
-void lockPrivateKey(PrivateKey key, const std::string& filePath, uint128 passwordHash) {
+void lockPrivateKey(PrivateKey key, const std::filesystem::path &filePath, uint256 passwordHash) {
     // Create a random initialisation vector
     uint64 initVector;
     CryptoSafeRandom::random(&initVector, sizeof(uint64));
@@ -97,7 +105,7 @@ void lockPrivateKey(PrivateKey key, const std::string& filePath, uint128 passwor
     delete [] cipher;
 }
 
-PrivateKey unlockPrivateKey(const std::string& filePath, uint128 passwordHash) {
+PrivateKey unlockPrivateKey(const std::filesystem::path &filePath, uint256 passwordHash) {
     // Open the key file again
     std::ifstream keyFile;
     keyFile.open(filePath, std::ios::binary);
@@ -113,6 +121,26 @@ PrivateKey unlockPrivateKey(const std::string& filePath, uint128 passwordHash) {
     // Create the key object
     PrivateKey key;
     memcpy((uint8 *) &key, decrypt(cipher, sizeof(uint2048) * 2, initVector, { passwordHash }), sizeof(uint2048) * 2);
+
+    return key;
+}
+
+void writePublicKey(PublicKey key, const std::filesystem::path &filePath) {
+    std::ofstream keyFile;
+    keyFile.open(filePath, std::ios::binary);
+
+    keyFile.write((const char *)&key.n, sizeof(uint2048));
+    keyFile.write((const char *)&key.e, sizeof(uint32));
+}
+
+PublicKey readPublicKey(const std::filesystem::path &filePath) {
+    std::ifstream keyFile;
+    keyFile.open(filePath, std::ios::binary);
+
+    PublicKey key;
+
+    keyFile.read((char *)&key.n, sizeof(uint2048));
+    keyFile.read((char *)&key.e, sizeof(uint32));
 
     return key;
 }

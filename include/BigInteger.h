@@ -212,8 +212,8 @@ public:
     // Constructor from a standard integer; can be a literal
     BigInteger(const uint64 &val);
 
-    template<uint32 sizeNew>
-    operator BigInteger<sizeNew>();
+//    template<uint32 sizeNew>
+//    operator BigInteger<sizeNew>();
 
     // Constructor from an arbitrarily sized BigInteger
     template<uint32 sizeOther>
@@ -1346,12 +1346,12 @@ BigInteger<size>::BigInteger(const uint64 &val) {
     value[0] = val;
 }
 
-template<uint32 size>
-template<uint32 sizeNew>
-BigInteger<size>::operator BigInteger<sizeNew>() {
-    // If we cast to a new size, just return the constructor for the new size with this as an input
-    return BigInteger<sizeNew>(*this);
-}
+//template<uint32 size>
+//template<uint32 sizeNew>
+//BigInteger<size>::operator BigInteger<sizeNew>() {
+//    // If we cast to a new size, just return the constructor for the new size with this as an input
+//    return *new BigInteger<sizeNew>(*this);
+//}
 
 template<uint32 size>
 template<uint32 sizeOther>
