@@ -45,8 +45,11 @@ uint256 sha256(const uint8 *message, uint64 messageSize) {
     padded[messageSize] = 0x80u;
     // Set all the bytes up to the last 8 to 0s
     memset(&padded[messageSize + 1], 0, messageChunks * 64 - messageSize - 9);
-    // Set the last 8 bytes to the size of the message
-    memcpy(&padded[messageChunks * 64 - 8], &messageSize, sizeof(uint64));
+    // Set the last 8 bytes to the size of the message in bits
+    uint64 bitLength = __builtin_bswap64(messageSize * 8);
+//    memcpy(&padded[messageChunks * 64 - 8], &bitLength, sizeof(uint32));
+//    memcpy(&padded[messageChunks * 64 - 4], &((uint32 *) &bitLength)[1], sizeof(uint32));
+    memcpy(&padded[messageChunks * 64 - 8], &bitLength, sizeof(uint64));
 
     for (int chunk = 0; chunk < messageChunks; chunk++) {
         // Declare a message schedule array of 64 32 bit integers
@@ -54,14 +57,18 @@ uint256 sha256(const uint8 *message, uint64 messageSize) {
         // Set the first 16 uint32's to the chunk
         memcpy(messageSchedule, &padded[64 * chunk], 64);
 
+        for (uint8 word = 0; word < 16; word++) {
+            messageSchedule[word] = __builtin_bswap32(messageSchedule[word]);
+        }
+
         // Extend the message through the rest of the schedule buffer
         for (int i = 16; i < 64; i++) {
             uint32 s0 = ROTATE_RIGHT_32(messageSchedule[i - 15], 7u) ^
                         ROTATE_RIGHT_32(messageSchedule[i - 15], 18u) ^
-                        ROTATE_RIGHT_32(messageSchedule[i - 15], 3u);
+                        (messageSchedule[i - 15] >> 3u);
             uint32 s1 = ROTATE_RIGHT_32(messageSchedule[i - 2], 17u) ^
                         ROTATE_RIGHT_32(messageSchedule[i - 2], 19u) ^
-                        ROTATE_RIGHT_32(messageSchedule[i - 2], 10u);
+                        (messageSchedule[i - 2] >> 10u);
             messageSchedule[i] = messageSchedule[i - 16] + s0 + messageSchedule[i - 7] + s1;
         }
 
@@ -100,11 +107,18 @@ uint256 sha256(const uint8 *message, uint64 messageSize) {
         }
     }
 
-    // Return the hash which is just the concatenation of the different values in the hash array
+    // Return the hash which is just the concatenation of the different values in the hash array in
+    // reverse order
     uint256 hash;
-    memcpy(&hash, hashValues, sizeof(hashValues));
+    for (uint8 h = 0; h < 8; h++) {
+        memcpy(&((uint32 *) &hash)[h], &hashValues[7 - h], sizeof(uint32));
+    }
 
     return hash;
+}
+
+uint256 sha256(const char *message, uint64 messageSize) {
+    return sha256((const uint8 *) message, messageSize);
 }
 
 #pragma clang diagnostic pop

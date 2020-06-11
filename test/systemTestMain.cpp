@@ -7,8 +7,16 @@
 #include <iostream>
 
 #include "../include/encrypt.h"
+#include "../include/authenticate.h"
 #include <chrono>
 #include <unistd.h>
+
+
+//static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+//{
+//    ((std::string*)userp)->append((char*)contents, size * nmemb);
+//    return size * nmemb;
+//}
 
 int main() {
 //    std::chrono::system_clock::time_point start, end;
@@ -108,6 +116,54 @@ int main() {
 //    TEST_printHex(key.n);
 //    TEST_printHex(key.d);
 
+//    CURL *curl;
+//    CURLcode res;
+//    std::string readBuffer;
+//
+//    curl = curl_easy_init();
+//
+//    if (curl) {
+//        std::cout << "Here" << std::endl;
+//        curl_easy_setopt(curl, CURLOPT_URL, "https://login.microsoftonline.com/common/discovery/v2.0/keys");
+//        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+//        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+//        res = curl_easy_perform(curl);
+//        curl_easy_cleanup(curl);
+//
+//        nlohmann::json j = nlohmann::json::parse(readBuffer);
+//
+//        for (const auto& x : j["keys"]) {
+//            std::cout << x["kid"] << std::endl;
+//        }
+//    }
+
+    QueryURL url = getMicrosoftAccountIDQueryURL("1f4c53b0-56be-4ecb-9c90-3c7b1294da44", "http://localhost:5000/login/authorize");
+
+    std::cout << "URL: " << url.url << std::endl;
+
+    std::string response = openOneShotHTTPAuthenticationServer("localhost", 5000);
+
+    MicrosoftAccountAuthState state = authenticateMicrosoftAccount(response, "1f4c53b0-56be-4ecb-9c90-3c7b1294da44",
+            url.numberUsedOnce, "matthew.sirman@hotmail.co.uk");
+
+    switch (state) {
+        case AUTHENTICATED:
+            std::cout << "Authenticated" << std::endl;
+            break;
+        case NO_MATCHING_KEY:
+            std::cout << "No matching key" << std::endl;
+            break;
+        case RECEIVED_ERRONEOUS_TOKEN:
+            std::cout << "Token received contained an error" << std::endl;
+            break;
+        case INVALID_TOKEN:
+            std::cout << "Token is invalid" << std::endl;
+            break;
+        case INVALID_SIGNATURE:
+            std::cout << "Invalid signature" << std::endl;
+    }
+
     return 0;
 }
+
 #pragma clang diagnostic pop
