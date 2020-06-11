@@ -32,6 +32,7 @@ struct QueryURL {
             : url(url), numberUsedOnce(numberUsedOnce) {}
 };
 
+// Status messages for authenticating a microsoft account
 enum MicrosoftAccountAuthState {
     AUTHENTICATED,
     RECEIVED_ERRONEOUS_TOKEN,
@@ -60,8 +61,10 @@ nlohmann::json httpGetJson(const std::string &url);
 // For internal use; a cURL callback function
 static size_t writeCallback(void *contents, size_t size, size_t nMem, void *userP);
 
+// Decode a base64 string
 std::string decodeBase64String(std::string base64);
 
+// Hash the message with SHA256 and pad appropriately as given in the standard
 uint2048 EMSA_PKCS1_v1_5_SHA(const std::string &message);
 
 #endif //ENCRYPT_AUTHENTICATE_H
