@@ -10,7 +10,7 @@
 // 2048 Bit Public RSA Key
 struct PublicKey {
     uint2048 n;
-    uint32 e;
+    uint32 e{};
 
     PublicKey() = default;
 

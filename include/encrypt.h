@@ -26,10 +26,10 @@ uint2048 sign(const uint2048 &message, PrivateKey key);
 uint2048 checkSignature(const uint2048 &cipher, PublicKey key);
 
 // Encrypt an arbitrary size message with a symmetric AES key
-uint8 *encrypt(uint8 *message, uint64 messageSize, uint64 initialisationVector, AESKey key);
+uint8 *encrypt(const uint8 *message, uint64 messageSize, uint64 initialisationVector, AESKey key);
 
 // Decrypt an arbitrary size message with a symmetric AES key
-uint8 *decrypt(uint8 *cipher, uint64 messageSize, uint64 initialisationVector, AESKey key);
+uint8 *decrypt(const uint8 *cipher, uint64 messageSize, uint64 initialisationVector, AESKey key);
 
 // Lock a private key to a file using a password
 void lockPrivateKey(PrivateKey key, const std::filesystem::path &filePath, uint256 passwordHash);

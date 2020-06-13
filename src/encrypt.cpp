@@ -10,11 +10,11 @@ uint8 SubstitutionBox::sBox[256];
 uint8 SubstitutionBox::invSBox[256];
 bool SubstitutionBox::initialised = false;
 
-uint2048 encrypt(uint2048 message, PublicKey key) {
+uint2048 encrypt(const uint2048 &message, PublicKey key) {
     return message.exp(key.e, key.n);
 }
 
-uint2048 decrypt(uint2048 cipher, PrivateKey key) {
+uint2048 decrypt(const uint2048 &cipher, PrivateKey key) {
     return cipher.exp(key.d, key.n);
 }
 
@@ -26,7 +26,7 @@ uint2048 checkSignature(const uint2048 &cipher, PublicKey key) {
     return cipher.exp(key.e, key.n);
 }
 
-uint8 *encrypt(uint8 *message, uint64 messageSize, uint64 initialisationVector, AESKey key) {
+uint8 *encrypt(const uint8 *message, uint64 messageSize, uint64 initialisationVector, AESKey key) {
     uint128 roundKeys[aesRounds + 1];
     generateRoundKeys(key, roundKeys);
 
@@ -76,7 +76,7 @@ uint8 *encrypt(uint8 *message, uint64 messageSize, uint64 initialisationVector, 
     return (uint8 *) cipher;
 }
 
-uint8 *decrypt(uint8 *cipher, uint64 messageSize, uint64 initialisationVector, AESKey key) {
+uint8 *decrypt(const uint8 *cipher, uint64 messageSize, uint64 initialisationVector, AESKey key) {
     // Decryption with AES CTR mode is identical to encryption, so we can just wrap the encrypt function
     return encrypt(cipher, messageSize, initialisationVector, key);
 }

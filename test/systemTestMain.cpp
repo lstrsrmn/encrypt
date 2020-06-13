@@ -137,31 +137,31 @@ int main() {
 //        }
 //    }
 
-    QueryURL url = getMicrosoftAccountIDQueryURL("1f4c53b0-56be-4ecb-9c90-3c7b1294da44", "http://localhost:5000/login/authorize");
-
-    std::cout << "URL: " << url.url << std::endl;
-
-    std::string response = openOneShotHTTPAuthenticationServer("localhost", 5000);
-
-    MicrosoftAccountAuthState state = authenticateMicrosoftAccount(response, "1f4c53b0-56be-4ecb-9c90-3c7b1294da44",
-            url.numberUsedOnce, "matthew.sirman@hotmail.co.uk");
-
-    switch (state) {
-        case AUTHENTICATED:
-            std::cout << "Authenticated" << std::endl;
-            break;
-        case NO_MATCHING_KEY:
-            std::cout << "No matching key" << std::endl;
-            break;
-        case RECEIVED_ERRONEOUS_TOKEN:
-            std::cout << "Token received contained an error" << std::endl;
-            break;
-        case INVALID_TOKEN:
-            std::cout << "Token is invalid" << std::endl;
-            break;
-        case INVALID_SIGNATURE:
-            std::cout << "Invalid signature" << std::endl;
-    }
+//    QueryURL url = getMicrosoftAccountIDQueryURL("1f4c53b0-56be-4ecb-9c90-3c7b1294da44", "http://localhost:5000/login/authorize");
+//
+//    std::cout << "URL: " << url.url << std::endl;
+//
+//    std::string response = openOneShotHTTPAuthenticationServer("localhost", 5000);
+//
+//    MicrosoftAccountAuthState state = authenticateMicrosoftAccount(response, "1f4c53b0-56be-4ecb-9c90-3c7b1294da44",
+//            url.numberUsedOnce, "matthew.sirman@hotmail.co.uk");
+//
+//    switch (state) {
+//        case AUTHENTICATED:
+//            std::cout << "Authenticated" << std::endl;
+//            break;
+//        case NO_MATCHING_KEY:
+//            std::cout << "No matching key" << std::endl;
+//            break;
+//        case RECEIVED_ERRONEOUS_TOKEN:
+//            std::cout << "Token received contained an error" << std::endl;
+//            break;
+//        case INVALID_TOKEN:
+//            std::cout << "Token is invalid" << std::endl;
+//            break;
+//        case INVALID_SIGNATURE:
+//            std::cout << "Invalid signature" << std::endl;
+//    }
 
     return 0;
 }

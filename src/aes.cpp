@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-use-auto"
 //
 // Created by matthew on 24/05/2020.
 //
@@ -198,3 +200,5 @@ void SubstitutionBox::initialiseSBox() {
     initialised = true;
 }
 
+
+#pragma clang diagnostic pop
