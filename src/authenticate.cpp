@@ -177,6 +177,134 @@ QueryURL getMicrosoftAccountIDQueryURL(const std::string &clientID, const std::s
 
 std::string openOneShotHTTPAuthenticationServer(const std::string &serverAddress, unsigned short port,
                                                 const std::string &responseHTML) {
+    return __openOneShotHTTPAuthServerImpl(serverAddress, port, responseHTML);
+}
+
+#ifdef _WIN32
+
+std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, unsigned short port,
+    const std::string &responseHTML) {
+
+    int infoResult;
+    WSADATA wsaData;
+
+    SOCKET serverSocket = INVALID_SOCKET;
+
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        std::cerr << "Failed to initialise WSA." << std::endl;
+        return std::string();
+    }
+
+    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+        std::cerr << "Failed to create TCP socket: " << WSAGetLastError() << std::endl;
+        WSACleanup();
+        return std::string();
+    }
+
+    // Setup the socket options to make it reuse ports and addresses
+    BOOL reuseAddr = TRUE, reusePort = TRUE;
+
+    if ((setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char *) &reuseAddr, sizeof(BOOL))) != 0) {
+        std::cerr << "Failed to set TCP socket to reuse address." << std::endl;
+        closesocket(serverSocket);
+        WSACleanup();
+        return std::string();
+    }
+
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = inet_addr(serverAddress.c_str());
+    address.sin_port = port;
+
+    if (bind(serverSocket, (SOCKADDR *) &address, sizeof(address)) == SOCKET_ERROR) {
+        std::cerr << "Failed to bind server to address: " << WSAGetLastError() << std::endl;
+        closesocket(serverSocket);
+        WSACleanup();
+        return std::string();
+    }
+
+    if (listen(serverSocket, 4) == SOCKET_ERROR) {
+        std::cerr << "Failed to initialise listening: " << WSAGetLastError() << std::endl;
+        closesocket(serverSocket);
+        WSACleanup();
+        return std::string();
+    }
+
+    SOCKET connectorSocket = INVALID_SOCKET;
+
+    if ((connectorSocket = accept(serverSocket, NULL, NULL)) == INVALID_SOCKET) {
+        std::cerr << "Failed to accept client: " << WSAGetLastError() << std::endl;
+        closesocket(serverSocket);
+        WSACleanup();
+        return std::string();
+    }
+
+    // Create a HTTP response to send back
+    std::stringstream response;
+
+    response << "HTTP/1.1 200 OK" << std::endl;
+    response << "Content-Type: text/html;charset=UTF-8" << std::endl;
+    response << "Content-Length: " << responseHTML.size() << std::endl;
+    response << std::endl;
+    response << responseHTML << std::endl;
+
+    // Send the HTTP response to the client
+    send(connectorSocket, response.str().c_str(), response.str().size(), 0);
+
+    // Create a string stream for the received data
+    std::stringstream data;
+
+    // Allocate a read buffer
+    char buffer[1024];
+
+    int inSize, outSize;
+
+    // Initialise a cURL object to decode the received messages
+    CURL *curl = curl_easy_init();
+
+    // For as long as the sender is sending data
+    while (true) {
+        // Clear the buffer
+        memset(buffer, 0, sizeof(buffer));
+        // Receive the message
+        inSize = recv(connectorSocket, buffer, sizeof(buffer), 0);
+        // If the message was empty, we have finished reading so break.
+        if (inSize <= 0) {
+            break;
+        }
+        // Decode the last read message and write it to the data stream
+        data << curl_easy_unescape(curl, buffer, inSize, &outSize);
+    }
+
+    // Delete the cURl object
+    curl_easy_cleanup(curl);
+
+
+    // Shut the server down
+    if (shutdown(serverSocket, SD_BOTH) == SOCKET_ERROR) {
+        std::cerr << "Failed to shut down server socket: " << WSAGetLastError() << std::endl;
+        closesocket(connectorSocket);
+        WSACleanup();
+        return std::string();
+    }
+
+    // Close the sockets
+    closesocket(serverSocket);
+    closesocket(connectorSocket);
+
+    // Process the sent data - the caller most likely doesn't want the HTTP POST header. They want the data
+    // The header ends with "\r\n\r\n" so we return the substring starting where we find this code.
+    const char headerEndCode[] = "\r\n\r\n";
+    std::string receivedData = data.str().substr(data.str().find(headerEndCode) + sizeof(headerEndCode) - 1);
+
+    // Return the data
+    return receivedData;
+}
+
+#else
+
+std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, unsigned short port,
+    const std::string &responseHTML) {
     // File descriptor for this temporary server
     int serverFD;
 
@@ -284,6 +412,7 @@ std::string openOneShotHTTPAuthenticationServer(const std::string &serverAddress
     // Return the data
     return receivedData;
 }
+#endif
 
 nlohmann::json httpGetJson(const std::string &url) {
     // Construct a cURL object and declare a read buffer for the response

@@ -9,9 +9,26 @@
 
 // Windows safe random number generator
 
-#error "Windows PRNG mode not implemented"
+// #define _WINSOCKAPI_
 
-class CryptoSafeRandom;
+#include <Windows.h>
+#include <wincrypt.h>
+
+class CryptoSafeRandom {
+public:
+    static void random(void* targetBuffer, size_t readSize);
+
+    ~CryptoSafeRandom();
+
+private:
+    HCRYPTPROV handle;
+
+    static CryptoSafeRandom* _instance;
+
+    CryptoSafeRandom();
+
+    static CryptoSafeRandom* getInstance();
+};
 
 #else
 

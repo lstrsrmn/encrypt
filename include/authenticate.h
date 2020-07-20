@@ -8,9 +8,18 @@
 #include <iostream>
 #include <sstream>
 #include <curl/curl.h>
+#ifdef _WIN32
+//#include <winsock2.h>
+
+#include <Windows.h>
+#include <ws2tcpip.h>
+
+// #pragma comment(lib, "Ws2_32.lib")
+#else
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#endif
 #include <nlohmann/json.hpp>
 
 #include "safeRandom.h"
@@ -54,6 +63,9 @@ QueryURL getMicrosoftAccountIDQueryURL(const std::string &clientID, const std::s
 // the server will shut itself down and return.
 std::string openOneShotHTTPAuthenticationServer(const std::string &serverAddress, unsigned short port,
                                                 const std::string &responseHTML = "<html><body><h1>Success</h1></body></html>");
+
+std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, unsigned short port,
+    const std::string &responseHTML);
 
 // Get a JSON object of the response from a URL
 nlohmann::json httpGetJson(const std::string &url);
