@@ -46,7 +46,7 @@ uint256 sha256(const uint8 *message, uint64 messageSize) {
     // Set all the bytes up to the last 8 to 0s
     memset(&padded[messageSize + 1], 0, messageChunks * 64 - messageSize - 9);
     // Set the last 8 bytes to the size of the message in bits
-    uint64 bitLength = bswap_32(messageSize * 8);
+    uint64 bitLength = bswap_64(messageSize * 8);
 //    memcpy(&padded[messageChunks * 64 - 8], &bitLength, sizeof(uint32));
 //    memcpy(&padded[messageChunks * 64 - 4], &((uint32 *) &bitLength)[1], sizeof(uint32));
     memcpy(&padded[messageChunks * 64 - 8], &bitLength, sizeof(uint64));
@@ -58,7 +58,7 @@ uint256 sha256(const uint8 *message, uint64 messageSize) {
         memcpy(messageSchedule, &padded[64 * chunk], 64);
 
         for (uint8 word = 0; word < 16; word++) {
-            messageSchedule[word] = bswap_64(messageSchedule[word]);
+            messageSchedule[word] = bswap_32(messageSchedule[word]);
         }
 
         // Extend the message through the rest of the schedule buffer

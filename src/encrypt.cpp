@@ -101,7 +101,7 @@ void lockPrivateKey(PrivateKey key, const std::filesystem::path &filePath, uint2
     CryptoSafeRandom::random(&initVector, sizeof(uint64));
 
     // Encrypt the key under the password hash
-    const uint8 *cipher = encrypt((uint8 *) &key, sizeof(uint2048) * 2, initVector, { passwordHash });
+    uint8 *cipher = encrypt((uint8 *) &key, sizeof(uint2048) * 2, initVector, { passwordHash });
 
     // Open the key file
     std::ofstream keyFile;
