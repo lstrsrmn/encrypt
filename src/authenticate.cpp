@@ -7,7 +7,7 @@
 #include "../include/authenticate.h"
 
 MicrosoftAccountAuthState authenticateMicrosoftAccount(std::string idToken, const std::string &clientID, unsigned expectedNumUsedOnce,
-                                  const std::string &expectedEmail) {
+                                  const std::string &expectedEmail, nlohmann::json &claims) {
     // Get the set of signing keys from this microsoft URL
     nlohmann::json keys = httpGetJson(MICROSOFT_AUTH_KEY_URL);
 
@@ -53,6 +53,7 @@ MicrosoftAccountAuthState authenticateMicrosoftAccount(std::string idToken, cons
     // Try to parse the payload (body) into a JSON object. If this fails, the token was erroneous
     try {
         body = nlohmann::json::parse(decodeBase64String(bodyRaw));
+        claims = body;
     } catch (nlohmann::json::parse_error &) {
         return RECEIVED_ERRONEOUS_TOKEN;
     }
@@ -108,7 +109,7 @@ MicrosoftAccountAuthState authenticateMicrosoftAccount(std::string idToken, cons
     // a specific user. Note, however, that if no expected email is provided, we skip this check. This makes the
     // assumption that the application will then check the user elsewhere, and it may do so by different means
     // (e.g. by their name rather than email)
-    if (body["email"] != expectedEmail || expectedEmail.empty()) {
+    if (body["email"] != expectedEmail && !expectedEmail.empty()) {
         return INVALID_TOKEN;
     }
 
@@ -155,10 +156,11 @@ MicrosoftAccountAuthState authenticateMicrosoftAccount(std::string idToken, cons
     return AUTHENTICATED;
 }
 
-QueryURL getMicrosoftAccountIDQueryURL(const std::string &clientID, const std::string &redirectURL) {
+QueryURL getMicrosoftAccountIDQueryURL(const std::string &clientID, const std::string &redirectURL, unsigned numberUsedOnce) {
     // Generate a random number used once
-    unsigned nonce;
-    CryptoSafeRandom::random(&nonce, sizeof(unsigned));
+    if (numberUsedOnce == 0) {
+        CryptoSafeRandom::random(&numberUsedOnce, sizeof(unsigned));
+    }
 
     // Construct a string containing all the relevant information to send to the Microsoft authentication
     // servers
@@ -169,10 +171,10 @@ QueryURL getMicrosoftAccountIDQueryURL(const std::string &clientID, const std::s
     url << "redirect_uri=" << redirectURL << "&";
     url << "response_mode=form_post&";
     url << "scope=openid+profile&";
-    url << "nonce=" << nonce;
+    url << "nonce=" << numberUsedOnce;
 
     // Return both the url string and the number we generated (for checking against later)
-    return { url.str(), nonce };
+    return { url.str(), numberUsedOnce };
 }
 
 std::string openOneShotHTTPAuthenticationServer(const std::string &serverAddress, unsigned short port,
@@ -417,21 +419,40 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
 nlohmann::json httpGetJson(const std::string &url) {
     // Construct a cURL object and declare a read buffer for the response
     CURL *curl = curl_easy_init();
-    std::string readBuffer;
 
-    // If we failed to create the cURL, then print an error and return
     if (!curl) {
-        std::cerr << "Failed to initialise cURL." << std::endl;
-        return {};
+        std::cerr << "Failed to create cURL context." << std::endl;
+        return "";
     }
 
+    std::string readBuffer;
+
+    CURLcode c;
+
     // Set the URL, read buffer and write callback for the cURL object
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    c = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    if (c != CURLE_OK) {
+        std::cerr << "Failed to set cURL URL option: " << curl_easy_strerror(c) << std::endl;
+        return "";
+    }
+    c = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    if (c != CURLE_OK) {
+        std::cerr << "Failed to set cURL write buffer: " << curl_easy_strerror(c) << std::endl;
+        return "";
+    }
+    c = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    if (c != CURLE_OK) {
+        std::cerr << "Failed to set cURL write callback: " << curl_easy_strerror(c) << std::endl;
+        return "";
+    }
 
     // Perform the transaction - the response is now in the read buffer
-    curl_easy_perform(curl);
+    c = curl_easy_perform(curl);
+    if (c != CURLE_OK) {
+        std::cerr << "Failed to perform cURL operation: " << curl_easy_strerror(c) << std::endl;
+        return "";
+    }
+
     // Destroy the cURL object
     curl_easy_cleanup(curl);
 
@@ -444,12 +465,6 @@ nlohmann::json httpGetJson(const std::string &url) {
         std::cerr << "Invalid JSON string response." << std::endl;
         return {};
     }
-}
-
-static size_t writeCallback(void *contents, size_t size, size_t nMem, void *userP) {
-    // Standard write callback for cURL
-    ((std::string *) userP)->append((char *) contents, size * nMem);
-    return size * nMem;
 }
 
 static unsigned char charPos(const unsigned char c) {
@@ -561,6 +576,12 @@ uint2048 EMSA_PKCS1_v1_5_SHA(const std::string &message) {
 
     // Return the encoded number
     return encoded;
+}
+
+static size_t writeCallback(void *contents, size_t size, size_t nMem, void *userP) {
+    // Standard write callback for cURL
+    ((std::string *) userP)->append((char *) contents, size * nMem);
+    return size * nMem;
 }
 
 #pragma clang diagnostic pop

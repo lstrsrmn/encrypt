@@ -27,6 +27,24 @@ uint2048 checkSignature(const uint2048 &cipher, PublicKey key) {
 }
 
 uint8 *encrypt(const uint8 *message, uint64 messageSize, uint64 initialisationVector, AESKey key) {
+    // Get the number of full message blocks (each block is 16 bytes)
+    uint64 messageBlocks = messageSize / 16;
+    uint8 finalMessageSize = messageSize % 16;
+
+    // Allocate memory for the cipher (on the heap, so we can return it)
+    uint64 *cipher = (uint64 *) malloc(sizeof(uint128) * (messageBlocks + (finalMessageSize != 0)));
+
+    encrypt(message, messageSize, cipher, initialisationVector, key);
+
+    return (uint8 *) cipher;
+}
+
+uint8 *decrypt(const uint8 *cipher, uint64 messageSize, uint64 initialisationVector, AESKey key) {
+    // Decryption with AES CTR mode is identical to encryption, so we can just wrap the encrypt function
+    return encrypt(cipher, messageSize, initialisationVector, key);
+}
+
+void encrypt(const uint8 *message, uint64 messageSize, void *outBuffer, uint64 initialisationVector, AESKey key) {
     uint128 roundKeys[aesRounds + 1];
     generateRoundKeys(key, roundKeys);
 
@@ -43,7 +61,7 @@ uint8 *encrypt(const uint8 *message, uint64 messageSize, uint64 initialisationVe
     uint8 finalMessageSize = messageSize % 16;
 
     // Allocate memory for the cipher (on the heap, so we can return it)
-    uint64 *cipher = (uint64 *) malloc(sizeof(uint128) * (messageBlocks + (finalMessageSize != 0)));
+    uint64 *cipher = (uint64 *) outBuffer;
 
     for (uint64 i = 0; i < messageBlocks; i++) {
         // Set the lower uint64 to the block index
@@ -72,13 +90,10 @@ uint8 *encrypt(const uint8 *message, uint64 messageSize, uint64 initialisationVe
         cipher[messageBlocks * 2] = ((uint64 *) finalMessage)[0] ^ ((uint64 *) &encryptedBlock)[0];
         cipher[messageBlocks * 2 + 1] = ((uint64 *) finalMessage)[1] ^ ((uint64 *) &encryptedBlock)[1];
     }
-
-    return (uint8 *) cipher;
 }
 
-uint8 *decrypt(const uint8 *cipher, uint64 messageSize, uint64 initialisationVector, AESKey key) {
-    // Decryption with AES CTR mode is identical to encryption, so we can just wrap the encrypt function
-    return encrypt(cipher, messageSize, initialisationVector, key);
+void decrypt(const uint8 *cipher, uint64 messageSize, void *outBuffer, uint64 initialisationVector, AESKey key) {
+    encrypt(cipher, messageSize, outBuffer, initialisationVector, key);
 }
 
 void lockPrivateKey(PrivateKey key, const std::filesystem::path &filePath, uint256 passwordHash) {

@@ -37,8 +37,8 @@ struct QueryURL {
 
     QueryURL() = default;
 
-    QueryURL(const std::string &url, unsigned numberUsedOnce)
-            : url(url), numberUsedOnce(numberUsedOnce) {}
+    QueryURL(std::string url, unsigned numberUsedOnce)
+            : url(std::move(url)), numberUsedOnce(numberUsedOnce) {}
 };
 
 // Status messages for authenticating a microsoft account
@@ -52,11 +52,11 @@ enum MicrosoftAccountAuthState {
 
 // Authenticate a Microsoft Account to check a user is who they say they are
 MicrosoftAccountAuthState authenticateMicrosoftAccount(std::string idToken, const std::string &clientID, unsigned expectedNumUsedOnce,
-                                  const std::string &expectedEmail);
+                                  const std::string &expectedEmail, nlohmann::json &claims);
 
 // Returns a URL that the user must open in their web browser to authenticate themselves through a Microsoft
 // account
-QueryURL getMicrosoftAccountIDQueryURL(const std::string &clientID, const std::string &redirectURL);
+QueryURL getMicrosoftAccountIDQueryURL(const std::string &clientID, const std::string &redirectURL, unsigned numberUsedOnce = 0);
 
 // Open a simple HTTP listen server that will listen for a response from a certain address. It will return a success
 // or error message to the user, and will return the HTTP request it received. After receiving a single request,

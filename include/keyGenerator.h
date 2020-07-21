@@ -64,8 +64,6 @@ bool testPrime(const BigInteger<size> &p, int security) {
     // To do this fast, we use the raw data of the number
     uint64 *nSub1Raw = (uint64 *) &pSub1;
 
-    // TODO: Add count trailing zeros function
-
     // Loop through each uint64 starting from the least significant
     for (int i = 0; i < size; i++) {
         // If this uint64 is non zero and we haven't yet broken, the least significant 1 is here
