@@ -136,6 +136,32 @@ PrivateKey unlockPrivateKey(const std::filesystem::path &filePath, uint256 passw
     PrivateKey key;
     memcpy((uint8 *) &key, decrypt(cipher, sizeof(uint2048) * 2, initVector, { passwordHash }), sizeof(uint2048) * 2);
 
+    keyFile.close();
+
+    return key;
+}
+
+void writePlaintextPrivateKey(PrivateKey key, const std::filesystem::path &filePath) {
+    std::ofstream keyFile;
+    keyFile.open(filePath, std::ios::binary);
+
+    keyFile.write((const char *) &key.n, sizeof(uint2048));
+    keyFile.write((const char *) &key.d, sizeof(uint2048));
+
+    keyFile.close();
+}
+
+PrivateKey readPlaintextPrivateKey(const std::filesystem::path &filePath) {
+    std::ifstream keyFile;
+    keyFile.open(filePath, std::ios::binary);
+
+    PrivateKey key;
+
+    keyFile.read((char *) &key.n, sizeof(uint2048));
+    keyFile.read((char *) &key.d, sizeof(uint2048));
+
+    keyFile.close();
+
     return key;
 }
 
@@ -145,6 +171,8 @@ void writePublicKey(PublicKey key, const std::filesystem::path &filePath) {
 
     keyFile.write((const char *)&key.n, sizeof(uint2048));
     keyFile.write((const char *)&key.e, sizeof(uint32));
+
+    keyFile.close();
 }
 
 PublicKey readPublicKey(const std::filesystem::path &filePath) {
@@ -155,6 +183,8 @@ PublicKey readPublicKey(const std::filesystem::path &filePath) {
 
     keyFile.read((char *)&key.n, sizeof(uint2048));
     keyFile.read((char *)&key.e, sizeof(uint32));
+
+    keyFile.close();
 
     return key;
 }

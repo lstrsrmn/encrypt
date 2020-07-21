@@ -45,6 +45,12 @@ void lockPrivateKey(PrivateKey key, const std::filesystem::path &filePath, uint2
 // Extract a private key from a file using a password
 PrivateKey unlockPrivateKey(const std::filesystem::path &filePath, uint256 passwordHash);
 
+// Write a private key in plaintext
+void writePlaintextPrivateKey(PrivateKey key, const std::filesystem::path &filePath);
+
+// Read a private key from plaintext
+PrivateKey readPlaintextPrivateKey(const std::filesystem::path &filePath);
+
 // Write a public key (in plaintext; we don't care if it is read)
 void writePublicKey(PublicKey key, const std::filesystem::path &filePath);
 
