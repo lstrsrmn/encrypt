@@ -39,9 +39,8 @@ uint8 *encrypt(const uint8 *message, uint64 messageSize, uint64 initialisationVe
     return (uint8 *) cipher;
 }
 
-uint8 *decrypt(const uint8 *cipher, uint64 messageSize, uint64 initialisationVector, AESKey key) {
-    // Decryption with AES CTR mode is identical to encryption, so we can just wrap the encrypt function
-    return encrypt(cipher, messageSize, initialisationVector, key);
+uint8 *decrypt(const uint8 *message, uint64 messageSize, uint64 initialisationVector, AESKey key) {
+    return encrypt(message, messageSize, initialisationVector, key);
 }
 
 void encrypt(const uint8 *message, uint64 messageSize, void *outBuffer, uint64 initialisationVector, AESKey key) {

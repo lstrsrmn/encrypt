@@ -21,6 +21,7 @@
 #include <netinet/in.h>
 #endif
 #include <nlohmann/json.hpp>
+#include <utility>
 
 #include "safeRandom.h"
 #include "sha.h"
@@ -70,13 +71,12 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
 // Get a JSON object of the response from a URL
 nlohmann::json httpGetJson(const std::string &url);
 
-// For internal use; a cURL callback function
-static size_t writeCallback(void *contents, size_t size, size_t nMem, void *userP);
-
 // Decode a base64 string
 std::string decodeBase64String(std::string base64);
 
 // Hash the message with SHA256 and pad appropriately as given in the standard
 uint2048 EMSA_PKCS1_v1_5_SHA(const std::string &message);
+
+size_t writeCallback(void *contents, size_t size, size_t nMem, void *userP);
 
 #endif //ENCRYPT_AUTHENTICATE_H

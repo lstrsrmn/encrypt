@@ -578,7 +578,7 @@ uint2048 EMSA_PKCS1_v1_5_SHA(const std::string &message) {
     return encoded;
 }
 
-static size_t writeCallback(void *contents, size_t size, size_t nMem, void *userP) {
+size_t writeCallback(void *contents, size_t size, size_t nMem, void *userP) {
     // Standard write callback for cURL
     ((std::string *) userP)->append((char *) contents, size * nMem);
     return size * nMem;
