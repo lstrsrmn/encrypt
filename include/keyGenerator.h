@@ -131,6 +131,7 @@ millerRabin(const BigInteger<size> &p, const BigInteger<size> &d, uint32 r, cons
         if (power == 1) {
             return false;
         }
+
         // If the square came to -1, however, we know that the next square will be 1 then 1 again etc all the way
         // up to a^(p - 1), so the number is probably prime
         if (power == pSub1) {

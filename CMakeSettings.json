@@ -13,17 +13,17 @@
       "variables": [
         {
           "name": "CURL_LIBRARY",
-          "value": "D:/Libraries/curl/${name}/lib/libcurl_a_debug.lib",
+          "value": "C:/Libraries/curl/${name}/lib/libcurl_a_debug.lib",
           "type": "FILEPATH"
         },
         {
           "name": "CURL_INCLUDE_DIRS",
-          "value": "D:/Libraries/curl/${name}/include",
+          "value": "C:/Libraries/curl/${name}/include",
           "type": "PATH"
         },
         {
           "name": "JSON_INCLUDE_DIRS",
-          "value": "D:/Libraries/json/include",
+          "value": "C:/Libraries/json/include",
           "type": "PATH"
         }
       ]
@@ -41,17 +41,17 @@
       "variables": [
         {
           "name": "CURL_LIBRARY",
-          "value": "D:/Libraries/curl/${name}/lib/libcurl_a_debug.lib",
+          "value": "C:/Libraries/curl/${name}/lib/libcurl_a_debug.lib",
           "type": "FILEPATH"
         },
         {
           "name": "CURL_INCLUDE_DIRS",
-          "value": "D:/Libraries/curl/${name}/include",
+          "value": "C:/Libraries/curl/${name}/include",
           "type": "PATH"
         },
         {
           "name": "JSON_INCLUDE_DIRS",
-          "value": "D:/Libraries/json/include",
+          "value": "C:/Libraries/json/include",
           "type": "PATH"
         }
       ]
@@ -69,17 +69,17 @@
       "variables": [
         {
           "name": "CURL_LIBRARY",
-          "value": "D:/Libraries/curl/${name}/lib/libcurl_a.lib",
+          "value": "C:/Libraries/curl/${name}/lib/libcurl_a.lib",
           "type": "FILEPATH"
         },
         {
           "name": "CURL_INCLUDE_DIRS",
-          "value": "D:/Libraries/curl/${name}/include",
+          "value": "C:/Libraries/curl/${name}/include",
           "type": "PATH"
         },
         {
           "name": "JSON_INCLUDE_DIRS",
-          "value": "D:/Libraries/json/include",
+          "value": "C:/Libraries/json/include",
           "type": "PATH"
         }
       ]
@@ -97,17 +97,17 @@
       "variables": [
         {
           "name": "CURL_LIBRARY",
-          "value": "D:/Libraries/curl/${name}/lib/libcurl_a.lib",
+          "value": "C:/Libraries/curl/${name}/lib/libcurl_a.lib",
           "type": "FILEPATH"
         },
         {
           "name": "CURL_INCLUDE_DIRS",
-          "value": "D:/Libraries/curl/${name}/include",
+          "value": "C:/Libraries/curl/${name}/include",
           "type": "PATH"
         },
         {
           "name": "JSON_INCLUDE_DIRS",
-          "value": "D:/Libraries/json/include",
+          "value": "C:/Libraries/json/include",
           "type": "PATH"
         }
       ]

@@ -292,13 +292,13 @@ void REDCAuxiliaryModulus<size>::createAuxiliaryModulusMask() {
     // Loop through each low uint64
     for (int i = 0; i < fullMasks; i++) {
         // Set the value at each uint64 lower than rExp to all 1s
-        raw[i] = -1UL;
+        raw[i] = -1ULL;
     }
 
     // If we have a remainder to write, set the most significant uint64 to -1 shifted by 64 - the number of bits we need
     // which will leave the correct number of bits as 1, whilst setting all the others to 0.
     if (maskRemainder != 0) {
-        raw[fullMasks] = (-1UL) >> (64 - maskRemainder);
+        raw[fullMasks] = (-1ULL) >> (64 - maskRemainder);
     }
 }
 
@@ -308,6 +308,7 @@ BigInteger<sizeMod> redc(REDCAuxiliaryModulus<sizeMod> &auxMod,
                          const BigInteger<sizeValue> &value) {
     // Set the first intermediary variable m
     BigInteger<sizeMod> m = ((value & auxMod.mask()) * modPrime) & auxMod.mask();
+
     // The second intermediary variable is t = (value + (m * mod)) / r. However, an issue arises if
     // the sum overflows, as we will essentially be subtracting more than we should. Hence, we calculate the sum
     // manually here.
