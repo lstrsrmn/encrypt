@@ -28,6 +28,8 @@ millerRabin(const BigInteger<size> &p, const BigInteger<size> &d, uint32 r, cons
 // Generate an asymmetric Public-Private key pair
 RSAKeyPair generateRSAKeyPair();
 
+DigitalSignatureKeyPair generateDigitalSignatureKeyPair();
+
 // Generate a symmetric AES key
 AESKey generateAESKey();
 
@@ -68,7 +70,7 @@ bool testPrime(const BigInteger<size> &p, int security) {
     for (int i = 0; i < size; i++) {
         // If this uint64 is non zero and we haven't yet broken, the least significant 1 is here
         if (nSub1Raw[i]) {
-            r += __builtin_ctzl(nSub1Raw[i]);
+            r += clz64(nSub1Raw[i]);
             break;
         }
         // If this uint64 was all 0s, then we just add 64 to the current r

@@ -10,19 +10,19 @@ uint8 SubstitutionBox::sBox[256];
 uint8 SubstitutionBox::invSBox[256];
 bool SubstitutionBox::initialised = false;
 
-uint2048 encrypt(const uint2048 &message, PublicKey key) {
+uint2048 encrypt(const uint2048 &message, PublicKey<32> key) {
     return message.exp(key.e, key.n);
 }
 
-uint2048 decrypt(const uint2048 &cipher, PrivateKey key) {
+uint2048 decrypt(const uint2048 &cipher, PrivateKey<32> key) {
     return cipher.exp(key.d, key.n);
 }
 
-uint2048 sign(const uint2048 &message, PrivateKey key) {
+BigInteger<24> sign(const uint2048 &message, PrivateKey<24> key) {
     return message.exp(key.d, key.n);
 }
 
-uint2048 checkSignature(const uint2048 &cipher, PublicKey key) {
+BigInteger<24> checkSignature(const uint2048 &cipher, PublicKey<24> key) {
     return cipher.exp(key.e, key.n);
 }
 
@@ -93,100 +93,6 @@ void encrypt(const uint8 *message, uint64 messageSize, void *outBuffer, uint64 i
 
 void decrypt(const uint8 *cipher, uint64 messageSize, void *outBuffer, uint64 initialisationVector, AESKey key) {
     encrypt(cipher, messageSize, outBuffer, initialisationVector, key);
-}
-
-void lockPrivateKey(PrivateKey key, const std::filesystem::path &filePath, uint256 passwordHash) {
-    // Create a random initialisation vector
-    uint64 initVector;
-    CryptoSafeRandom::random(&initVector, sizeof(uint64));
-
-    // Encrypt the key under the password hash
-    uint8 *cipher = encrypt((uint8 *) &key, sizeof(uint2048) * 2, initVector, { passwordHash });
-
-    // Open the key file
-    std::ofstream keyFile;
-    keyFile.open(filePath, std::ios::binary);
-
-    // Write first the initialisation vector (in plaintext)
-    keyFile.write((const char *) &initVector, sizeof(uint64));
-    // Then write the encrypted key
-    keyFile.write((const char *) cipher, sizeof(uint2048) * 2);
-
-    // Close the file
-    keyFile.close();
-
-    // Delete the allocated memory
-    delete [] cipher;
-}
-
-PrivateKey unlockPrivateKey(const std::filesystem::path &filePath, uint256 passwordHash) {
-    // Open the key file again
-    std::ifstream keyFile;
-    keyFile.open(filePath, std::ios::binary);
-
-    // Read the initialisation vector
-    uint64 initVector;
-    keyFile.read((char *) &initVector, sizeof(uint64));
-
-    // Read the cipher text
-    uint8 *cipher = (uint8 *) alloca(sizeof(uint2048) * 2);
-    keyFile.read((char *) cipher, sizeof(uint2048) * 2);
-
-    // Create the key object
-    PrivateKey key;
-    memcpy((uint8 *) &key, decrypt(cipher, sizeof(uint2048) * 2, initVector, { passwordHash }), sizeof(uint2048) * 2);
-
-    keyFile.close();
-
-    return key;
-}
-
-void writePlaintextPrivateKey(PrivateKey key, const std::filesystem::path &filePath) {
-    std::ofstream keyFile;
-    keyFile.open(filePath, std::ios::binary);
-
-    keyFile.write((const char *) &key.n, sizeof(uint2048));
-    keyFile.write((const char *) &key.d, sizeof(uint2048));
-
-    keyFile.close();
-}
-
-PrivateKey readPlaintextPrivateKey(const std::filesystem::path &filePath) {
-    std::ifstream keyFile;
-    keyFile.open(filePath, std::ios::binary);
-
-    PrivateKey key;
-
-    keyFile.read((char *) &key.n, sizeof(uint2048));
-    keyFile.read((char *) &key.d, sizeof(uint2048));
-
-    keyFile.close();
-
-    return key;
-}
-
-void writePublicKey(PublicKey key, const std::filesystem::path &filePath) {
-    std::ofstream keyFile;
-    keyFile.open(filePath, std::ios::binary);
-
-    keyFile.write((const char *)&key.n, sizeof(uint2048));
-    keyFile.write((const char *)&key.e, sizeof(uint32));
-
-    keyFile.close();
-}
-
-PublicKey readPublicKey(const std::filesystem::path &filePath) {
-    std::ifstream keyFile;
-    keyFile.open(filePath, std::ios::binary);
-
-    PublicKey key;
-
-    keyFile.read((char *)&key.n, sizeof(uint2048));
-    keyFile.read((char *)&key.e, sizeof(uint32));
-
-    keyFile.close();
-
-    return key;
 }
 
 #pragma clang diagnostic pop

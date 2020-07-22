@@ -36,6 +36,38 @@ RSAKeyPair generateRSAKeyPair() {
     return keyPair;
 }
 
+DigitalSignatureKeyPair generateDigitalSignatureKeyPair() {
+    const uint128 one = 1;
+
+    DigitalSignatureKeyPair keyPair;
+    // Generate two large random primes
+    BigInteger<12> p = generatePrime<12>();
+    BigInteger<12> q = generatePrime<12>();
+
+    BigInteger<24> n = p * q;
+    BigInteger<24> psi = (p - one) * (q - one);
+
+    BigInteger<1> e = 0x10001, unused;
+    BigInteger<24> d;
+
+    extendedEuclidean(e, psi, d, unused);
+
+    // If d is negative, keep adding psi until it is positive.
+    while (d.pseudoNegative()) {
+        d = d + psi;
+    }
+
+    keyPair.privateKey = { n, d };
+    keyPair.publicKey = { n, 0x10001 };
+
+    // Overwrite the memory of the large primes to destroy them
+    memset(&p, 0, 96);
+    memset(&q, 0, 96);
+    memset(&psi, 0, 192);
+
+    return keyPair;
+}
+
 AESKey generateAESKey() {
     // An AES key is just a random 128 bit number. It does not need any special properties such as primality
     AESKey key;

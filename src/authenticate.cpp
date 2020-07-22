@@ -67,7 +67,7 @@ MicrosoftAccountAuthState authenticateMicrosoftAccount(std::string idToken, cons
 
     // Declare an object for the signing key, which must exist in the JSON object received from the Microsoft server
     // for this to be valid.
-    PublicKey signingKey;
+    RSAKeyPair::Public signingKey;
     bool foundMatchingKey = false;
 
     // Loop through each possible key
@@ -165,7 +165,7 @@ QueryURL getMicrosoftAccountIDQueryURL(const std::string &clientID, const std::s
     // Construct a string containing all the relevant information to send to the Microsoft authentication
     // servers
     std::stringstream url;
-    url << "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?";
+    url << "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?";
     url << "client_id=" << clientID << "&";
     url << "response_type=id_token&";
     url << "redirect_uri=" << redirectURL << "&";
@@ -216,7 +216,7 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
     sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = inet_addr(serverAddress.c_str());
-    address.sin_port = port;
+    address.sin_port = htons(port);
 
     if (bind(serverSocket, (SOCKADDR *) &address, sizeof(address)) == SOCKET_ERROR) {
         std::cerr << "Failed to bind server to address: " << WSAGetLastError() << std::endl;
@@ -281,14 +281,13 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
     // Delete the cURl object
     curl_easy_cleanup(curl);
 
-
     // Shut the server down
-    if (shutdown(serverSocket, SD_BOTH) == SOCKET_ERROR) {
+    /*if (shutdown(serverSocket, SD_BOTH) == SOCKET_ERROR) {
         std::cerr << "Failed to shut down server socket: " << WSAGetLastError() << std::endl;
         closesocket(connectorSocket);
         WSACleanup();
         return std::string();
-    }
+    }*/
 
     // Close the sockets
     closesocket(serverSocket);
@@ -297,7 +296,11 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
     // Process the sent data - the caller most likely doesn't want the HTTP POST header. They want the data
     // The header ends with "\r\n\r\n" so we return the substring starting where we find this code.
     const char headerEndCode[] = "\r\n\r\n";
-    std::string receivedData = data.str().substr(data.str().find(headerEndCode) + sizeof(headerEndCode) - 1);
+    const std::string dataString = data.str();
+
+    size_t start = dataString.find(headerEndCode) + sizeof(headerEndCode) - 1, end = dataString.find('&');
+
+    std::string receivedData = dataString.substr(start, end - start);
 
     // Return the data
     return receivedData;

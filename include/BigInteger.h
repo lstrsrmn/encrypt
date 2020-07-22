@@ -11,6 +11,20 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
+#ifdef _WIN32
+
+#include <intrin.h>
+
+#define clz64(x) __lzcnt64(x)
+#define clz32(x) __lzcnt(x)
+
+#else
+
+#define clz64(x) __builtin_clzl(x)
+#define clz32(x) __builtin_clz(x)
+
+#endif
+
 template<unsigned size>
 struct BigInteger;
 
@@ -755,7 +769,7 @@ void BigInteger<size>::modAndDivide(const BigInteger<sizeDivisor> &divisor, BigI
     }
 
     // The base of each digit, 2 ^ 32.
-    uint64 b = 0x0000000100000000L;
+    uint64 b = 0x0000000100000000ULL;
 
     // The sizes of the dividend and divisor (in terms of digits base b) respectively
     int m, n;
@@ -829,7 +843,7 @@ void BigInteger<size>::modAndDivide(const BigInteger<sizeDivisor> &divisor, BigI
     // Calculate s such that D = 2^(32 - s), where D is such that b / 2 <= v[n - 1] * D < b. Hence, if we
     // calculate s as the number of leading zeros in v[n - 1], we know that left shifting by s gives a value
     // with the first bit set, and hence v[n - 1] << s >= b / 2, and is < b.
-    uint32 s = __builtin_clz(v[n - 1]);
+    uint32 s = clz32(v[n - 1]);
 
     // Normalise the two inputs by multiplying them by D (equivalent to left shifting by s)
     un[m] = (uint64) u[m - 1] >> (32 - s);
@@ -1328,7 +1342,7 @@ uint32 BigInteger<size>::countLeadingZeros() const {
         // As soon as we find a value which is non zero, we know the most significant 1 is in this uint64
         if (value[i]) {
             // Get the number of leading zeros in this uint64. This builtin function should be optimised by gcc
-            uint8 leadingZeros = __builtin_clzl(value[i]);
+            uint8 leadingZeros = clz64(value[i]);
             lZeros += leadingZeros;
             break;
         }

@@ -7,31 +7,55 @@
 
 #include "BigInteger.h"
 
-// 2048 Bit Public RSA Key
+// Public Key class of generic size.
+// The "e" value will always be a 32 bit unsigned integer
+template<uint32 size>
 struct PublicKey {
-    uint2048 n;
+    BigInteger<size> n;
     uint32 e{};
 
     PublicKey() = default;
 
-    PublicKey(uint2048 n, uint32 e);
+    PublicKey(BigInteger<size> n, uint32 e);
 };
 
-// 2048 Bit Private RSA Key
+template<uint32 size>
+PublicKey<size>::PublicKey(BigInteger<size> n, uint32 e) {
+    this->n = n;
+    this->e = e;
+}
+
+// Private Key class of generic size
+template<uint32 size>
 struct PrivateKey {
-    uint2048 n;
-    uint2048 d;
+    BigInteger<size> n;
+    BigInteger<size> d;
 
     PrivateKey() = default;
 
-    PrivateKey(uint2048 n, uint2048 d);
+    PrivateKey(BigInteger<size> n, BigInteger<size> d);
+};
+
+template<uint32 size>
+PrivateKey<size>::PrivateKey(BigInteger<size> n, BigInteger<size> d) {
+    this->n = n;
+    this->d = d;
+}
+
+template<uint32 size>
+struct KeyPair {
+    typedef PublicKey<size> Public;
+    typedef PrivateKey<size> Private;
+
+    PublicKey<size> publicKey;
+    PrivateKey<size> privateKey;
 };
 
 // 2048 Bit RSA Key Pair
-struct RSAKeyPair {
-    PublicKey publicKey;
-    PrivateKey privateKey;
-};
+typedef KeyPair<32> RSAKeyPair;
+
+// 1536 Bit Digital Signature Key Pair
+typedef KeyPair<24> DigitalSignatureKeyPair;
 
 // 128 Bit AES Key
 struct AESKey {
