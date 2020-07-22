@@ -12,10 +12,7 @@ set(TEST_FILES test/unitTestMain.cpp test/test_BigInteger.cpp test/test_BigInteg
 
 if (WIN32)
 
-# set(CURL_LIBRARY "-lcurl")
-set(CURL_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/../curl-7.71.1/include)
-
-set(JSON_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/../json/include)
+find_path(CURL_INCLUDE_DIRS NAMES curl)
 
 include_directories(
     ${CURL_INCLUDE_DIRS}
@@ -42,12 +39,9 @@ add_executable(${PROJECT_SYS_TEST} test/systemTestMain.cpp ${SOURCE_FILES})
 
 if (WIN32)
 
-find_library(CURL_LIBRARY NAMES libcurl PATHS ${PROJECT_SOURCE_DIR}/build/lib)
+find_library(CURL_LIBRARY NAMES libcurl_a)
 
-message(${CURL_LIBRARY})
-
-target_link_libraries(${PROJECT_SYS_TEST} ${CURL_LIBRARY} Ws2_32 Wldap32)
-target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY} Ws2_32 Wldap32)
+target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY} Normaliz Ws2_32 Wldap32 Crypt32 advapi32)
 
 else ()
 
