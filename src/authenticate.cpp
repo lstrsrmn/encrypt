@@ -188,18 +188,18 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
     const std::string &responseHTML) {
 
     int infoResult;
-    WSADATA wsaData;
+    // WSADATA wsaData;
 
     SOCKET serverSocket = INVALID_SOCKET;
 
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    /*if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         std::cerr << "Failed to initialise WSA." << std::endl;
         return std::string();
-    }
+    }*/
 
     if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
         std::cerr << "Failed to create TCP socket: " << WSAGetLastError() << std::endl;
-        WSACleanup();
+        // WSACleanup();
         return std::string();
     }
 
@@ -209,7 +209,7 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
     if ((setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char *) &reuseAddr, sizeof(BOOL))) != 0) {
         std::cerr << "Failed to set TCP socket to reuse address." << std::endl;
         closesocket(serverSocket);
-        WSACleanup();
+        // WSACleanup();
         return std::string();
     }
 
@@ -228,7 +228,7 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
     if (listen(serverSocket, 4) == SOCKET_ERROR) {
         std::cerr << "Failed to initialise listening: " << WSAGetLastError() << std::endl;
         closesocket(serverSocket);
-        WSACleanup();
+        // WSACleanup();
         return std::string();
     }
 
@@ -237,7 +237,7 @@ std::string __openOneShotHTTPAuthServerImpl(const std::string &serverAddress, un
     if ((connectorSocket = accept(serverSocket, NULL, NULL)) == INVALID_SOCKET) {
         std::cerr << "Failed to accept client: " << WSAGetLastError() << std::endl;
         closesocket(serverSocket);
-        WSACleanup();
+        // WSACleanup();
         return std::string();
     }
 
