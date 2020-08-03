@@ -40,7 +40,7 @@ typedef BigInteger<32> uint2048;
 typedef BigInteger<64> uint4096;
 
 template<uint32 size>
-struct REDCAuxiliaryModulus;
+class REDCAuxiliaryModulus;
 
 // The REDC function "cleans" after the product of two integers in Montgomery form. When we create the auxiliary
 // modulus R, we get the two inputs in the form aR (mod n) and bR (mod n). If we want to multiply these together,
