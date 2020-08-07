@@ -95,4 +95,66 @@ void decrypt(const uint8 *cipher, uint64 messageSize, void *outBuffer, uint64 in
     encrypt(cipher, messageSize, outBuffer, initialisationVector, key);
 }
 
+void lockData(uint8 *data, unsigned size, const std::filesystem::path &filePath, uint256 passwordHash) {
+    // Create a random initialisation vector
+    uint64 initVector;
+    CryptoSafeRandom::random(&initVector, sizeof(uint64));
+
+    // Encrypt the key under the password hash
+    uint8 *cipher = encrypt(data, size, initVector, { passwordHash });
+
+    // Open the key file
+    std::ofstream dataFile;
+    dataFile.open(filePath, std::ios::binary);
+
+    // Write first the initialisation vector (in plaintext)
+    dataFile.write((const char *) &initVector, sizeof(uint64));
+    // Write the data size
+    dataFile.write((const char *) &size, sizeof(unsigned));
+    // Then write the encrypted key
+    dataFile.write((const char *) cipher, size);
+
+    // Close the file
+    dataFile.close();
+
+    // Delete the allocated memory
+    delete[] cipher;
+}
+
+uint8 *unlockData(const std::filesystem::path &filePath, uint256 passwordHash, unsigned *size) {
+    // Open the key file again
+    std::ifstream dataFile;
+    dataFile.open(filePath, std::ios::binary);
+
+    // Read the initialisation vector
+    uint64 initVector;
+    dataFile.read((char *) &initVector, sizeof(uint64));
+
+    // Read the data size
+    unsigned dataSize;
+    dataFile.read((char *) &dataSize, sizeof(unsigned));
+
+    if (size) {
+        *size = dataSize;
+    }
+
+    // Read the cipher text
+    uint8 *cipher = (uint8 *) alloca(PADDED_SIZE(dataSize, 16u));
+    dataFile.read((char *) cipher, PADDED_SIZE(dataSize, 16u));
+
+    // Create the key object
+    uint8 *data = (uint8 *) malloc(dataSize);
+    memcpy(data, decrypt(cipher, PADDED_SIZE(dataSize, 16u), initVector, { passwordHash }), dataSize);
+
+    dataFile.close();
+
+    return data;
+}
+
+std::string unlockStringData(const std::filesystem::path &filePath, uint256 passwordHash) {
+    unsigned size;
+    uint8 *data = unlockData(filePath, passwordHash, &size);
+    return std::string((const char *) data, size);
+}
+
 #pragma clang diagnostic pop

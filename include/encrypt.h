@@ -12,6 +12,8 @@
 #include "keyGenerator.h"
 #include "sha.h"
 
+#define PADDED_SIZE(s, p) ((((s) / (p)) + (((s) % (p)) != 0)) * (p))
+
 // Encrypt a message of 2048 bits under the provided public key using 
 uint2048 encrypt(const uint2048 &message, PublicKey<32> key);
 
@@ -88,6 +90,12 @@ PrivateKey<size> unlockPrivateKey(const std::filesystem::path &filePath, uint256
 
     return key;
 }
+
+void lockData(uint8 *data, unsigned size, const std::filesystem::path &filePath, uint256 passwordHash);
+
+uint8 *unlockData(const std::filesystem::path &filePath, uint256 passwordHash, unsigned *size = nullptr);
+
+std::string unlockStringData(const std::filesystem::path &filePath, uint256 passwordHash);
 
 // Write a private key in plaintext
 template<uint32 size>
