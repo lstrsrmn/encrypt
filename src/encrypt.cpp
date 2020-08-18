@@ -1,5 +1,3 @@
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "modernize-use-auto"
 //
 // Created by matthew on 13/05/2020.
 //
@@ -156,5 +154,3 @@ std::string unlockStringData(const std::filesystem::path &filePath, uint256 pass
     uint8 *data = unlockData(filePath, passwordHash, &size);
     return std::string((const char *) data, size);
 }
-
-#pragma clang diagnostic pop

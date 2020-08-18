@@ -1,5 +1,3 @@
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "modernize-use-auto"
 //
 // Created by matthew on 14/05/2020.
 //
@@ -146,5 +144,3 @@ millerRabin(const BigInteger<size> &p, const BigInteger<size> &d, uint32 r, cons
 }
 
 #endif //ENCRYPT_KEYGENERATOR_H
-
-#pragma clang diagnostic pop

@@ -14,6 +14,8 @@ if (WIN32)
 
 find_path(CURL_INCLUDE_DIRS NAMES curl)
 
+message(STATUS ${CURL_INCLUDE_DIRS})
+
 include_directories(
     ${CURL_INCLUDE_DIRS}
     ${JSON_INCLUDE_DIRS}
