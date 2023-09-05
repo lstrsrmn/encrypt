@@ -9,24 +9,7 @@
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "variables": [
-        {
-          "name": "CURL_LIBRARY",
-          "value": "C:/Libraries/curl/${name}/lib/libcurl_a_debug.lib",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CURL_INCLUDE_DIRS",
-          "value": "C:/Libraries/curl/${name}/include",
-          "type": "PATH"
-        },
-        {
-          "name": "JSON_INCLUDE_DIRS",
-          "value": "C:/Libraries/json/include",
-          "type": "PATH"
-        }
-      ]
+      "ctestCommandArgs": ""
     },
     {
       "name": "x86-Debug",
@@ -37,24 +20,7 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x86" ],
-      "variables": [
-        {
-          "name": "CURL_LIBRARY",
-          "value": "C:/Libraries/curl/${name}/lib/libcurl_a_debug.lib",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CURL_INCLUDE_DIRS",
-          "value": "C:/Libraries/curl/${name}/include",
-          "type": "PATH"
-        },
-        {
-          "name": "JSON_INCLUDE_DIRS",
-          "value": "C:/Libraries/json/include",
-          "type": "PATH"
-        }
-      ]
+      "inheritEnvironments": [ "msvc_x86" ]
     },
     {
       "name": "x86-Release",
@@ -93,24 +59,7 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": [
-        {
-          "name": "CURL_LIBRARY",
-          "value": "C:/Libraries/curl/${name}/lib/libcurl_a.lib",
-          "type": "FILEPATH"
-        },
-        {
-          "name": "CURL_INCLUDE_DIRS",
-          "value": "C:/Libraries/curl/${name}/include",
-          "type": "PATH"
-        },
-        {
-          "name": "JSON_INCLUDE_DIRS",
-          "value": "C:/Libraries/json/include",
-          "type": "PATH"
-        }
-      ]
+      "inheritEnvironments": [ "msvc_x64_x64" ]
     }
   ]
 }
